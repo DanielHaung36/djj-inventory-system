@@ -1,0 +1,20 @@
+# config.yml
+driver: "postgres"
+host: "127.0.0.1"
+port: 5432
+user: "djj"
+password: "qq123456"
+database: "djjinventory"
+schema: "public"
+
+# either list specific tables:
+tables:
+  - products
+  - product_categories
+  - product_launch_reviews
+  - product_attachments
+# or use all tables:
+all: true
+
+# where to write your models
+out_dir: "./internal/models"
