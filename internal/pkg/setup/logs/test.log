@@ -1,0 +1,21 @@
+{"level":"info","ts":"2025-06-19T18:52:52.522+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T18:52:52.527+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T18:52:52.527+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T18:52:57.353+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T18:52:57.357+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T18:52:57.357+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T18:53:58.153+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T18:53:58.158+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T18:53:58.159+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T18:54:38.968+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T18:54:38.976+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T18:54:38.978+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T18:55:35.698+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T18:55:35.799+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T18:55:35.800+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T18:56:12.222+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T18:56:12.228+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T18:56:12.229+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T20:43:08.241+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T20:43:08.254+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T20:43:08.255+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}

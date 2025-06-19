@@ -1,0 +1,707 @@
+basePath: /api
+definitions:
+  gin.H:
+    additionalProperties: {}
+    type: object
+  handler.ErrorResponse:
+    description: 错误返回结构
+    properties:
+      error:
+        type: string
+    type: object
+  handler.LoginRequest:
+    description: 使用用户名和密码登录
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handler.PermCreateRequest:
+    description: 使用 action 和 object 字段创建权限
+    properties:
+      action:
+        type: string
+      object:
+        type: string
+    required:
+    - action
+    - object
+    type: object
+  handler.PermUpdateRequest:
+    description: 更新权限的 action 和 object
+    properties:
+      action:
+        type: string
+      object:
+        type: string
+    required:
+    - action
+    - object
+    type: object
+  handler.RegisterRequest:
+    description: 使用用户名、邮箱、密码和可选角色 ID 列表创建新用户
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role_ids:
+        items:
+          type: integer
+        type: array
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  handler.ResponseMessage:
+    description: 通用返回消息结构
+    properties:
+      message:
+        type: string
+    type: object
+  handler.RoleCreateRequest:
+    description: 使用 name 字段创建新角色
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handler.RoleUpdateRequest:
+    description: 更新角色名称
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  handler.UserCreateRequest:
+    description: 使用用户名、邮箱、密码和可选角色列表创建用户
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role_ids:
+        items:
+          type: integer
+        type: array
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  handler.UserUpdateRequest:
+    description: 可选更新用户名、邮箱或密码
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  model.Permission:
+    properties:
+      createdAt:
+        description: 创建时间
+        type: string
+      id:
+        description: 权限ID
+        type: integer
+      name:
+        description: 权限名，如 "users.create"
+        type: string
+      updatedAt:
+        description: 更新时间
+        type: string
+    type: object
+  model.Role:
+    properties:
+      createdAt:
+        description: 创建时间
+        type: string
+      id:
+        description: 角色ID
+        type: integer
+      name:
+        description: 角色名
+        type: string
+      permissions:
+        description: 多对多：角色拥有的权限
+        items:
+          $ref: '#/definitions/model.Permission'
+        type: array
+      updatedAt:
+        description: 更新时间
+        type: string
+    type: object
+  model.User:
+    properties:
+      created_at:
+        description: 创建时间
+        type: string
+      email:
+        description: 邮箱（登录／联系用）
+        type: string
+      id:
+        description: 用户ID
+        type: integer
+      is_deleted:
+        description: 软删除标记
+        type: boolean
+      permissions:
+        description: '**NEW**: collect all perms through Role → RolePermission:'
+        items:
+          $ref: '#/definitions/model.Permission'
+        type: array
+      roles:
+        description: 用户拥有的角色
+        items:
+          $ref: '#/definitions/model.Role'
+        type: array
+      updated_at:
+        description: 最后更新时间
+        type: string
+      username:
+        description: 登录用户名
+        type: string
+      version:
+        description: 乐观锁版本号
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 注册/登录 与 RBAC 管理
+  title: DJJ Inventory System API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: 使用用户名和密码登录，返回 Session Cookie
+      parameters:
+      - description: 登录信息
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 用户登录
+      tags:
+      - auth
+  /logout:
+    post:
+      description: 清除登录 Cookie
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 用户登出
+      tags:
+      - auth
+  /permissions:
+    get:
+      description: 获取所有权限
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Permission'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 列表权限
+      tags:
+      - permissions
+    post:
+      consumes:
+      - application/json
+      description: 使用 action 和 object 字段创建权限
+      parameters:
+      - description: 权限信息
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.PermCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Permission'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 创建权限
+      tags:
+      - permissions
+  /permissions/{id}:
+    delete:
+      description: 根据 ID 删除权限
+      parameters:
+      - description: 权限 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 删除权限
+      tags:
+      - permissions
+    get:
+      description: 根据 ID 获取权限详细
+      parameters:
+      - description: 权限 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Permission'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 查询单个权限
+      tags:
+      - permissions
+    put:
+      consumes:
+      - application/json
+      description: 根据 ID 修改 action 和 object
+      parameters:
+      - description: 权限 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新信息
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.PermUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Permission'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 更新权限
+      tags:
+      - permissions
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: 使用用户名、邮箱、密码和可选角色 ID 列表创建新用户，并下发登录 Cookie
+      parameters:
+      - description: 注册信息
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: 用户注册
+      tags:
+      - auth
+  /roles:
+    get:
+      description: 获取所有角色列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Role'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 列表角色
+      tags:
+      - roles
+    post:
+      consumes:
+      - application/json
+      description: 使用 name 字段创建一个新角色
+      parameters:
+      - description: 角色名称
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RoleCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Role'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 创建角色
+      tags:
+      - roles
+  /roles/{id}:
+    delete:
+      description: 根据 ID 删除角色
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 删除角色
+      tags:
+      - roles
+    get:
+      description: 根据 ID 返回角色信息
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Role'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 查询单个角色
+      tags:
+      - roles
+    put:
+      consumes:
+      - application/json
+      description: 根据 ID 修改角色名称
+      parameters:
+      - description: 角色 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 新角色名称
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RoleUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Role'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 更新角色
+      tags:
+      - roles
+  /users:
+    get:
+      description: 获取所有用户
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.User'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 列表用户
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: 使用用户名、邮箱、密码和可选角色列表创建用户
+      parameters:
+      - description: 用户信息
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UserCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 创建用户
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: 根据 ID 删除用户
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 删除用户
+      tags:
+      - users
+    get:
+      description: 根据 ID 获取用户详情
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 查询单个用户
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: 根据 ID 修改邮箱或密码
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 更新信息
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UserUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 更新用户
+      tags:
+      - users
+  /users/{id}/roles:
+    get:
+      description: 获取指定用户拥有的所有角色
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Role'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 列出用户角色
+      tags:
+      - users
+  /users/{id}/roles/{rid}:
+    delete:
+      description: 删除指定用户的某个角色
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色 ID
+        in: path
+        name: rid
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 从用户移除角色
+      tags:
+      - users
+    post:
+      description: 为指定用户添加角色
+      parameters:
+      - description: 用户 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色 ID
+        in: path
+        name: rid
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: 给用户分配角色
+      tags:
+      - users
+swagger: "2.0"

@@ -1,0 +1,20 @@
+{"level":"info","ts":"2025-06-19T20:51:02.668+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-19T20:51:02.673+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-19T20:51:02.707+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T20:51:02.739+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T20:51:02.739+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T20:55:39.045+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-19T20:55:39.047+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-19T20:55:39.078+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T20:55:39.109+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T20:55:39.109+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T20:56:59.128+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-19T20:56:59.130+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-19T20:56:59.163+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T20:56:59.192+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T20:56:59.192+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-19T21:07:18.404+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-19T21:07:18.407+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-19T21:07:18.441+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-19T21:07:18.473+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-19T21:07:18.474+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}

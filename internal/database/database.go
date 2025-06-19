@@ -3,13 +3,28 @@ package database
 import (
 	"database/sql"
 	"djj-inventory-system/internal/logger"
+	"djj-inventory-system/internal/model"
 	"fmt"
+	"log"
+
+	"github.com/go-gormigrate/gormigrate/v2"
 	_ "github.com/lib/pq" // <------------ here
+	"github.com/xuri/excelize/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 )
 
+func Connect() *gorm.DB {
+	// 1. 先打开 DB
+	sqlDB := InitDB("djjinventory")
+	gormDB := InitGormDB(sqlDB)
+	_, err := excelize.OpenFile("/mnt/a/code/go/djj-inventory-system/cmd/seed/product.xlsx")
+	if err != nil {
+		log.Fatal(err)
+	}
+	Migrate(gormDB)
+	return gormDB
+}
 func InitDB(dbName string) *sql.DB {
 	// 连接到目标数据库
 	connStrTarget := fmt.Sprintf("host=localhost user=djj password=qq123456 dbname=%s sslmode=disable", dbName)
@@ -37,6 +52,81 @@ func InitGormDB(db *sql.DB) *gorm.DB {
 	return gormDB
 }
 
-func Migrate() {
+func Migrate(db *gorm.DB) {
+	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
+		// v1: 初始的 RBAC 表
+		{
+			ID: "20250611_init_rbac",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.User{}, &model.Role{}, &model.Permission{}, &model.UserRole{}, &model.RolePermission{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("user_roles", "role_permissions", "permissions", "roles", "users")
+			},
+		},
+		{
+			ID: "20250611_add_audit_history",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&model.AuditedHistory{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("audit_histories")
+			},
+		},
+		//{
+		//	ID: "20250611_add_deleted_at_to_users",
+		//	Migrate: func(tx *gorm.DB) error {
+		//		// 会执行：ALTER TABLE users ADD COLUMN deleted_at timestamptz NULL;
+		//		return tx.Migrator().AddColumn(&model.User{}, "DeletedAt")
+		//	},
+		//	Rollback: func(tx *gorm.DB) error {
+		//		// 回滚时删掉这一列
+		//		return tx.Migrator().DropColumn(&model.User{}, "DeletedAt")
+		//	},
+		//},
+		//// v2: 产品、报价
+		//{
+		//	ID: "20250201_add_product_quote",
+		//	Migrate: func(tx *gorm.DB) error {
+		//		return tx.AutoMigrate(&Product{}, &Quote{}, &QuoteItem{})
+		//	},
+		//	Rollback: func(tx *gorm.DB) error {
+		//		return tx.Migrator().DropTable("quote_items", "quotes", "products")
+		//	},
+		//},
+		//
+		//// ★ 如果你下一步要加“订单”表，就在这里插一段：
+		//{
+		//	ID: "20250315_add_order_orderitem",
+		//	Migrate: func(tx *gorm.DB) error {
+		//		// 顺序不重要，gorm 会按 ID 升序执行
+		//		return tx.AutoMigrate(&Order{}, &OrderItem{})
+		//	},
+		//	Rollback: func(tx *gorm.DB) error {
+		//		return tx.Migrator().DropTable("order_items", "orders")
+		//	},
+		//},
 
+		// 再下次要加“库存”表，就继续追加一个新的 Migration{…}
+	})
+
+	if err := m.Migrate(); err != nil {
+		log.Fatalf("could not migrate: %v", err)
+	}
+	//初始化RBAC
+	InitRBACSeed(db)
+}
+
+// InitRBACSeed 全量种子：角色、权限、用户、角色-权限关联
+func InitRBACSeed(db *gorm.DB) {
+	if err := initRoles(db); err != nil {
+		logger.Fatalf("❌ initRoles: %v", err)
+	}
+	if err := initPermissions(db); err != nil {
+		logger.Fatalf("❌ initPermissions: %v", err)
+	}
+	//if err := initUsers(db); err != nil {
+	//	logger.Fatalf("❌ initUsers: %v", err)
+	//}
+	logger.Infof("🎉 database seeding completed")
 }
