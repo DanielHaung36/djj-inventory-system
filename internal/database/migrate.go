@@ -4,6 +4,7 @@ import (
 	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/model"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -131,28 +132,28 @@ func initUsers(db *gorm.DB) error {
 		}
 
 		// 3) 给 leader 角色额外全部本模块权限
-		if ru.Role == "sales_leader" {
-			if err := grantGroup(db, "quotes", role.ID); err != nil {
+		if strings.Contains(ru.Role, "sale") {
+			if err := grantGroup(db, "quotes", ru.Role); err != nil {
 				return err
 			}
-			if err := grantGroup(db, "orders", role.ID); err != nil {
-				return err
-			}
-		}
-		if ru.Role == "purchase_leader" {
-			if err := grantGroup(db, "orders", role.ID); err != nil {
+			if err := grantGroup(db, "orders", ru.Role); err != nil {
 				return err
 			}
 		}
-		if ru.Role == "operations_leader" {
-			if err := grantGroup(db, "inventory", role.ID); err != nil {
+		if strings.Contains(ru.Role, "purchase") {
+			if err := grantGroup(db, "orders", ru.Role); err != nil {
 				return err
 			}
 		}
-		if ru.Role == "finance_leader" {
+		if strings.Contains(ru.Role, "operations") {
+			if err := grantGroup(db, "inventory", ru.Role); err != nil {
+				return err
+			}
+		}
+		if strings.Contains(ru.Role, "finance") {
 			// Finance leader = admin 下的所有模块，仅次于 admin
 			for grp := range permissionGroups {
-				if err := grantGroup(db, grp, role.ID); err != nil {
+				if err := grantGroup(db, grp, ru.Role); err != nil {
 					return err
 				}
 			}
@@ -164,7 +165,13 @@ func initUsers(db *gorm.DB) error {
 }
 
 // grantGroup 给某个角色(roleID)批量挂上某个模块(groupName)的所有权限
-func grantGroup(db *gorm.DB, groupName string, roleID uint) error {
+func grantGroup(db *gorm.DB, groupName, roleName string) error {
+	// 先把角色查出来
+	var role model.Role
+	if err := db.Where("name = ?", roleName).First(&role).Error; err != nil {
+		return fmt.Errorf("find role %s: %w", roleName, err)
+	}
+
 	perms, ok := permissionGroups[groupName]
 	if !ok {
 		return fmt.Errorf("unknown permission group %s", groupName)
@@ -174,9 +181,12 @@ func grantGroup(db *gorm.DB, groupName string, roleID uint) error {
 		if err := db.Where("name = ?", name).First(&p).Error; err != nil {
 			return fmt.Errorf("find perm %s: %w", name, err)
 		}
-		rp := model.RolePermission{RoleID: roleID, PermissionID: p.ID}
+		rp := model.RolePermission{
+			RoleID:       role.ID,
+			PermissionID: p.ID,
+		}
 		if err := db.FirstOrCreate(&rp, rp).Error; err != nil {
-			return fmt.Errorf("grant %s to role %d: %w", name, roleID, err)
+			return fmt.Errorf("grant %s to %s: %w", name, roleName, err)
 		}
 	}
 	return nil

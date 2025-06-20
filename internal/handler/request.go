@@ -56,8 +56,8 @@ type PermCreateRequest struct {
 // @Param action body string true "权限动作"
 // @Param object body string true "权限对象"
 type PermUpdateRequest struct {
-	Action string `json:"action" binding:"required"`
-	Object string `json:"object" binding:"required"`
+	Name string `json:"name" binding:"required"`
+	Id   int    `json:"id" `
 }
 
 // UserCreateRequest 创建用户请求体

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/pkg/auth"
 	"djj-inventory-system/internal/service"
 	"fmt"
@@ -96,6 +97,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// write the securecookie
 	if err := auth.SetSession(sd, c.Writer); err != nil {
+		logger.Errorf("SetSession err: %v", err)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "无法写入会话"})
 		return
 	}
@@ -112,7 +114,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Failure      500      {object} ErrorResponse
 // @Router       /logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
-	// 清空 cookie
-	c.SetCookie("uid", "", -1, "/", "", false, true)
+	// 调用我们 auth 包里的 ClearSession
+	auth.ClearSession(c.Writer)
+
 	c.JSON(http.StatusOK, ResponseMessage{Message: "logged out"})
 }

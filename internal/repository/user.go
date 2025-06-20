@@ -58,8 +58,23 @@ func (r *userRepo) Delete(id uint) error {
 }
 
 func (r *userRepo) AddRole(userID, roleID uint) error {
-	ur := model.UserRole{UserID: userID, RoleID: roleID}
-	return r.db.FirstOrCreate(&ur, ur).Error
+	// 1. 删除该用户现有的所有角色（如果没有记纪录，DELETE 不会出错）
+	if err := r.db.
+		Where("user_id = ?", userID).
+		Delete(&model.UserRole{}).Error; err != nil {
+		return err
+	}
+
+	// 2. 插入新的角色
+	ur := model.UserRole{
+		UserID: userID,
+		RoleID: roleID,
+	}
+	if err := r.db.Create(&ur).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *userRepo) RemoveRole(userID, roleID uint) error {

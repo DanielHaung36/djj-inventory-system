@@ -69,7 +69,7 @@ func NewRouter(db *gorm.DB) *gin.Engine {
 	// router
 	r := gin.Default()
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	//r.Use(handler.SessionAuthMiddleware())
+	r.Use(handler.SessionAuthMiddleware())
 	public := r.Group("/api")
 	// 挂载 Swagger UI
 	handler.NewAuthHandler(public, userSvc)

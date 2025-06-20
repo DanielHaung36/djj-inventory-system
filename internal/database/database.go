@@ -125,8 +125,8 @@ func InitRBACSeed(db *gorm.DB) {
 	if err := initPermissions(db); err != nil {
 		logger.Fatalf("❌ initPermissions: %v", err)
 	}
-	//if err := initUsers(db); err != nil {
-	//	logger.Fatalf("❌ initUsers: %v", err)
-	//}
+	if err := initUsers(db); err != nil {
+		logger.Fatalf("❌ initUsers: %v", err)
+	}
 	logger.Infof("🎉 database seeding completed")
 }

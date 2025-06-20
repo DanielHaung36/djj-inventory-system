@@ -86,6 +86,8 @@ func (s *userService) Create(ctx context.Context, username, email, password stri
 			return nil, err
 		}
 	}
+	//分配权限
+
 	// 审计
 	s.aud.Record(ctx, model.AuditedTableUsers, u.ID, "create", *u)
 	return u, nil

@@ -32,15 +32,14 @@ func SessionAuthMiddleware() gin.HandlerFunc {
 		logger.Debugf(c.FullPath())
 		if c.FullPath() == "/api/login" || c.FullPath() == "/api/logout" || c.FullPath() == "/api/register" || c.FullPath() == "/api/roles" {
 			c.Next()
+			return // ← 加上这句 跑你的登录 handler 然后直接 return，不会再继续执行后面的登录检查中间件。
 		}
 		if err != nil || uid == 0 {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "请先登录"})
 			return
 		}
-
-		// 把 userID 注入到 context
-		ctx := context.WithValue(c.Request.Context(), model.ContextUserIDKey, uid)
-		c.Request = c.Request.WithContext(ctx)
+		// 3. 注入到 Gin 自己的上下文里
+		c.Set(string(model.ContextUserIDKey), uid)
 		c.Next()
 	}
 }

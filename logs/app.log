@@ -119,3 +119,184 @@
 {"level":"info","ts":"2025-06-19T21:22:01.356+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
 {"level":"info","ts":"2025-06-19T21:22:01.427+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
 {"level":"info","ts":"2025-06-19T21:22:01.428+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T09:59:35.087+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T09:59:35.095+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T09:59:35.141+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T09:59:35.172+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T09:59:35.173+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:08:12.844+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:08:12.847+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:08:12.883+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:08:12.915+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:08:12.916+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:10:35.547+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:10:35.549+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:10:35.589+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:10:35.619+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:10:35.620+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:10:37.602+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:10:37.604+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:10:37.646+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:10:37.680+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:10:37.681+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:10:58.403+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:10:58.406+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:10:58.444+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:10:58.476+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:10:58.476+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:12:34.771+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:12:34.773+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:12:34.813+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:12:34.844+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:12:34.844+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:13:11.887+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:13:11.889+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:13:11.926+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:13:11.958+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:13:11.958+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:13:28.537+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:13:28.540+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:13:28.579+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:13:28.612+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:13:28.612+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:22:05.986+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:22:05.989+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:22:06.027+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:22:06.060+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:22:06.217+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:22:06.217+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:26:11.781+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:26:11.783+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:26:11.820+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:26:11.852+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:26:11.917+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:26:11.917+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"error","ts":"2025-06-20T10:26:50.139+0800","caller":"handler/auth.go:100","msg":"SetSession err: securecookie: error - caused by: crypto/aes: invalid key size 26"}
+{"level":"info","ts":"2025-06-20T10:35:09.983+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:35:09.986+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:35:10.021+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:35:10.052+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:35:10.116+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:35:10.116+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:35:50.943+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:35:50.945+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:35:50.983+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:35:51.014+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:35:51.080+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:35:51.080+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:35:53.188+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:35:53.190+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:35:53.228+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:35:53.264+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:35:53.334+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:35:53.334+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:35:54.539+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:35:54.548+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:35:54.582+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:35:54.612+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:35:54.675+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:35:54.675+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"info","ts":"2025-06-20T10:44:07.967+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:44:07.971+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:44:08.010+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:44:08.043+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:44:08.106+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:44:08.107+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"debug","ts":"2025-06-20T10:44:36.646+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:44:36.647+0800","caller":"handler/middleware.go:32","msg":"/api/register"}
+{"level":"debug","ts":"2025-06-20T10:45:09.412+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:45:09.412+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T10:45:18.194+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:45:18.195+0800","caller":"handler/middleware.go:32","msg":"/api/logout"}
+{"level":"debug","ts":"2025-06-20T10:45:21.716+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:45:21.717+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T10:46:11.044+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:46:11.045+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:47:19.713+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:47:19.713+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:47:41.387+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:47:41.387+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:49:14.229+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:49:17.236+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:50:03.209+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:50:06.023+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:51:20.435+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:51:20.436+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"info","ts":"2025-06-20T10:54:36.627+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:54:36.629+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:54:36.665+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:54:36.697+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:54:36.761+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:54:36.761+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"debug","ts":"2025-06-20T10:54:54.508+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T10:54:54.511+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:58:38.033+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:58:38.033+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:58:41.555+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:58:41.555+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T10:59:29.940+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:59:29.941+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T10:59:36.933+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T10:59:36.933+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"info","ts":"2025-06-20T10:59:49.999+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T10:59:50.001+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T10:59:50.038+0800","caller":"database/migrate.go:35","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T10:59:50.070+0800","caller":"database/migrate.go:55","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T10:59:50.133+0800","caller":"database/migrate.go:162","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T10:59:50.134+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"debug","ts":"2025-06-20T11:00:00.321+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:00:00.322+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T11:00:09.921+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:00:09.921+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T11:00:22.558+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:00:22.558+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:00:49.388+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:00:49.388+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:00:50.237+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:00:50.237+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:01:15.183+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:01:15.183+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:01:37.098+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:01:37.098+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T11:02:27.564+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:02:27.565+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T11:02:31.108+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:02:31.109+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:03:23.259+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:03:23.260+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T11:04:24.935+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:04:24.935+0800","caller":"handler/middleware.go:32","msg":"/api/permissions"}
+{"level":"debug","ts":"2025-06-20T11:05:46.950+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:05:46.950+0800","caller":"handler/middleware.go:32","msg":"/api/permissions/:id"}
+{"level":"debug","ts":"2025-06-20T11:05:56.300+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:05:56.300+0800","caller":"handler/middleware.go:32","msg":"/api/permissions/:id"}
+{"level":"debug","ts":"2025-06-20T11:09:47.529+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:09:47.530+0800","caller":"handler/middleware.go:32","msg":"/api/permissions/:id"}
+{"level":"debug","ts":"2025-06-20T11:10:10.754+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:10:10.755+0800","caller":"handler/middleware.go:32","msg":"/api/permissions/:id"}
+{"level":"debug","ts":"2025-06-20T11:10:41.408+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:10:41.408+0800","caller":"handler/middleware.go:32","msg":"/api/roles/:id"}
+{"level":"debug","ts":"2025-06-20T11:11:01.221+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:11:01.222+0800","caller":"handler/middleware.go:32","msg":"/api/roles/:id"}
+{"level":"info","ts":"2025-06-20T11:26:33.518+0800","caller":"database/database.go:39","msg":"Connecting to database djjinventory"}
+{"level":"info","ts":"2025-06-20T11:26:33.521+0800","caller":"database/database.go:51","msg":"成功使用 GORM 连接到数据库"}
+{"level":"info","ts":"2025-06-20T11:26:33.557+0800","caller":"database/migrate.go:36","msg":"✔ permissions initialized"}
+{"level":"info","ts":"2025-06-20T11:26:33.588+0800","caller":"database/migrate.go:56","msg":"✔ admin granted all permissions"}
+{"level":"info","ts":"2025-06-20T11:26:33.773+0800","caller":"database/migrate.go:163","msg":"✔ users and user_roles initialized"}
+{"level":"info","ts":"2025-06-20T11:26:33.774+0800","caller":"database/database.go:131","msg":"🎉 database seeding completed"}
+{"level":"debug","ts":"2025-06-20T11:27:51.555+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:27:51.556+0800","caller":"handler/middleware.go:32","msg":"/api/roles/:id"}
+{"level":"debug","ts":"2025-06-20T11:28:02.737+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:28:02.737+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:28:07.935+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:28:07.935+0800","caller":"handler/middleware.go:32","msg":"/api/roles/:id"}
+{"level":"debug","ts":"2025-06-20T11:28:25.718+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:28:25.718+0800","caller":"handler/middleware.go:32","msg":"/api/roles/:id"}
+{"level":"debug","ts":"2025-06-20T11:29:00.590+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:29:00.591+0800","caller":"handler/middleware.go:32","msg":"/api/permissions/:id"}
+{"level":"debug","ts":"2025-06-20T11:36:18.412+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:36:18.412+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
+{"level":"debug","ts":"2025-06-20T11:36:34.538+0800","caller":"handler/middleware.go:31","msg":"uid: 37"}
+{"level":"debug","ts":"2025-06-20T11:36:34.538+0800","caller":"handler/middleware.go:32","msg":"/api/logout"}
+{"level":"debug","ts":"2025-06-20T11:36:40.593+0800","caller":"handler/middleware.go:31","msg":"uid: 0"}
+{"level":"debug","ts":"2025-06-20T11:36:40.593+0800","caller":"handler/middleware.go:32","msg":"/api/login"}
