@@ -18,6 +18,8 @@ type User struct {
 	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`                                                           // 最后更新时间
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`                                                                             // GORM 原生软删除字段（可选）
 	Roles        []Role         `gorm:"many2many:user_roles;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"roles,omitempty"` // 用户拥有的角色
+	// 直接赋给用户的权限（新增）
+	DirectPermissions []Permission `gorm:"many2many:user_permissions"`
 	// **NEW**: collect all perms through Role → RolePermission:
 	Permissions []Permission `gorm:"-"`
 }

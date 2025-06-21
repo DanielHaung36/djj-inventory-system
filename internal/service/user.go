@@ -24,6 +24,13 @@ type UserService interface {
 	AssignRole(ctx context.Context, userID, roleID uint) error
 	RemoveRole(ctx context.Context, userID, roleID uint) error
 	ListRoles(ctx context.Context, userID uint) ([]model.Role, error)
+
+	// 用户直接权限管理
+	GrantUserPermissions(ctx context.Context, userID uint, permIDs []uint) error
+	RevokeUserPermissions(ctx context.Context, userID uint, permIDs []uint) error
+
+	// 获取合并后的所有权限（角色继承 + 直接赋予）
+	GetWithAllPermissions(ctx context.Context, userID uint) (*model.User, error)
 }
 
 type userService struct {
@@ -159,4 +166,34 @@ func (s *userService) RemoveRole(ctx context.Context, userID, roleID uint) error
 
 func (s *userService) ListRoles(ctx context.Context, userID uint) ([]model.Role, error) {
 	return s.repo.ListRoles(userID)
+}
+
+// GrantUserPermissions 批量授予用户直接权限
+func (s *userService) GrantUserPermissions(ctx context.Context, userID uint, permIDs []uint) error {
+	if err := s.repo.GrantUserPermissions(userID, permIDs); err != nil {
+		return err
+	}
+	s.aud.Record(ctx, model.AuditedTableUserRoles, userID,
+		"grant_user_permissions", map[string]interface{}{"perm_ids": permIDs})
+	return nil
+}
+
+// RevokeUserPermissions 批量撤销用户直接权限
+func (s *userService) RevokeUserPermissions(ctx context.Context, userID uint, permIDs []uint) error {
+	if err := s.repo.RevokeUserPermissions(userID, permIDs); err != nil {
+		return err
+	}
+	s.aud.Record(ctx, model.AuditedTableUserRoles, userID,
+		"revoke_user_permissions", map[string]interface{}{"perm_ids": permIDs})
+	return nil
+}
+
+// GetWithAllPermissions 获取用户角色继承 + 直接赋予后的全部权限
+func (s *userService) GetWithAllPermissions(ctx context.Context, userID uint) (*model.User, error) {
+	// repo 层预加载了 Roles.Permissions 和 DirectPermissions，并做了扁平去重
+	u, err := s.repo.FindWithAllPerms(userID)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
 }

@@ -25,6 +25,11 @@ func NewUserHandler(rg *gin.RouterGroup, svc service.UserService) {
 	grp.POST("/:id/roles/:rid", h.AssignRole)
 	grp.DELETE("/:id/roles/:rid", h.RemoveRole)
 	grp.GET("/:id/roles", h.ListRoles)
+
+	// ---- 新增：直接赋予/回收 用户权限 ----
+	grp.POST("/:id/permissions", h.GrantUserPermissions)
+	grp.DELETE("/:id/permissions", h.RevokeUserPermissions)
+	grp.GET("/:id/permissions", h.ListUserPermissions)
 }
 
 // Create godoc
@@ -191,4 +196,68 @@ func (h *UserHandler) ListRoles(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, roles)
+}
+
+// GrantUserPermissions 批量给用户增加直接权限
+func (h *UserHandler) GrantUserPermissions(c *gin.Context) {
+	var body struct {
+		PermissionIDs []uint `json:"permission_ids"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	uid, _ := strconv.Atoi(c.Param("id"))
+	if err := h.svc.GrantUserPermissions(c.Request.Context(), uint(uid), body.PermissionIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// RevokeUserPermissions 批量从用户移除直接权限
+func (h *UserHandler) RevokeUserPermissions(c *gin.Context) {
+	var body struct {
+		PermissionIDs []uint `json:"permission_ids"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	uid, _ := strconv.Atoi(c.Param("id"))
+	if err := h.svc.RevokeUserPermissions(c.Request.Context(), uint(uid), body.PermissionIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+/*
+	Preload("Roles.Permissions")
+
+	首先通过 user_roles 把这个用户的所有角色都查出来
+
+	然后再通过 role_permissions 把这些角色对应的所有权限一并拉进来
+
+	Preload("DirectPermissions")
+
+	把 user_permissions 里，这个用户直接关联（“单独赋予”）的所有权限查出来
+
+	扁平化合并
+
+	把第一步和第二步拿到的权限合并到一个 map 去重
+
+	最终把 map 里的所有权限值填到 user.Permissions 里
+*/
+
+// ListUserPermissions 获取用户所有直接+继承权限
+func (h *UserHandler) ListUserPermissions(c *gin.Context) {
+	uid, _ := strconv.Atoi(c.Param("id"))
+	user, err := h.svc.GetWithAllPermissions(c.Request.Context(), uint(uid))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	// 返回扁平化后的 Permissions 字段
+	c.JSON(http.StatusOK, user.Permissions)
 }

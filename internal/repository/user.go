@@ -21,6 +21,13 @@ type UserRepo interface {
 	ListRolePermissions(userID uint) ([]model.Permission, error)
 	// 新增这一行
 	FindByUsername(username string) (*model.User, error)
+
+	// 直接给用户批量增删权限
+	GrantUserPermissions(userID uint, permIDs []uint) error
+	RevokeUserPermissions(userID uint, permIDs []uint) error
+
+	// 查询用户：角色继承+直接权限扁平去重后的全部权限
+	FindWithAllPerms(userID uint) (*model.User, error)
 }
 
 type userRepo struct{ db *gorm.DB }
@@ -142,4 +149,64 @@ func (r *userRepo) ListRolePermissions(userID uint) ([]model.Permission, error) 
 		Find(&perms).
 		Error
 	return perms, err
+}
+
+func (r *userRepo) GrantUserPermissions(userID uint, permIDs []uint) error {
+	// 1. 把 permIDs 对应的 Permission 记录 load 出来
+	var perms []model.Permission
+	if err := r.db.
+		Where("id IN ?", permIDs).
+		Find(&perms).
+		Error; err != nil {
+		return err
+	}
+	// 2. 用 GORM 的 Association.Append 批量插入 user_permissions
+	return r.db.
+		Model(&model.User{ID: userID}).
+		Association("DirectPermissions").
+		Append(perms)
+}
+
+func (r *userRepo) RevokeUserPermissions(userID uint, permIDs []uint) error {
+	// 1. load 出要删的那些权限
+	var perms []model.Permission
+	if err := r.db.
+		Where("id IN ?", permIDs).
+		Find(&perms).
+		Error; err != nil {
+		return err
+	}
+	// 2. 批量从 user_permissions 删除
+	return r.db.
+		Model(&model.User{ID: userID}).
+		Association("DirectPermissions").
+		Delete(perms)
+}
+
+func (r *userRepo) FindWithAllPerms(userID uint) (*model.User, error) {
+	// 1. 预加载 Roles → Permissions，以及 DirectPermissions
+	var u model.User
+	if err := r.db.
+		Preload("Roles.Permissions").
+		Preload("DirectPermissions").
+		First(&u, userID).
+		Error; err != nil {
+		return nil, err
+	}
+
+	// 2. 扁平化去重：把角色的权限 和 直接权限 合并到 u.Permissions
+	permMap := make(map[uint]model.Permission)
+	for _, role := range u.Roles {
+		for _, p := range role.Permissions {
+			permMap[p.ID] = p
+		}
+	}
+	for _, p := range u.DirectPermissions {
+		permMap[p.ID] = p
+	}
+	for _, p := range permMap {
+		u.Permissions = append(u.Permissions, p)
+	}
+
+	return &u, nil
 }
