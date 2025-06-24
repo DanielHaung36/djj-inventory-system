@@ -5,6 +5,7 @@ import (
 	"djj-inventory-system/internal/service"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -78,7 +79,20 @@ func (h *UserHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, u)
+	role := ""
+	if len(u.Roles) > 0 {
+		role = u.Roles[0].Name
+	}
+	dtoUser := UserDTO{
+		ID:        u.ID,
+		Username:  u.Username,
+		FullName:  u.Username,
+		Email:     u.Email,
+		Role:      role,
+		IsActive:  !u.IsDeleted,
+		LastLogin: u.UpdatedAt.Format(time.RFC3339),
+	}
+	c.JSON(http.StatusOK, dtoUser)
 }
 
 // List godoc
@@ -91,6 +105,24 @@ func (h *UserHandler) Get(c *gin.Context) {
 // @Router       /users [get]
 func (h *UserHandler) List(c *gin.Context) {
 	users, _ := h.svc.List(c)
+	dtos := make([]UserDTO, 0, len(users))
+	for _, u := range users {
+		// 拿第一个角色名（如果你用户只有一个角色）
+		roleName := ""
+		if len(u.Roles) > 0 {
+			roleName = u.Roles[0].Name
+		}
+
+		dtos = append(dtos, UserDTO{
+			ID:        u.ID,
+			Username:  u.Username,
+			FullName:  u.Username,
+			Email:     u.Email,
+			Role:      roleName,
+			IsActive:  !u.IsDeleted,
+			LastLogin: u.UpdatedAt.Format(time.RFC3339),
+		})
+	}
 	c.JSON(http.StatusOK, users)
 }
 
@@ -258,6 +290,15 @@ func (h *UserHandler) ListUserPermissions(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	permDTOs := make([]PermissionDTO, 0, len(user.Permissions))
+	for _, p := range user.Permissions {
+		permDTOs = append(permDTOs, PermissionDTO{
+			ID:          p.ID,
+			Name:        p.Name,
+			Label:       p.Label,
+			Description: p.Description,
+		})
+	}
 	// 返回扁平化后的 Permissions 字段
-	c.JSON(http.StatusOK, user.Permissions)
+	c.JSON(http.StatusOK, permDTOs)
 }
