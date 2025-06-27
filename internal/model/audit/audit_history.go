@@ -1,4 +1,4 @@
-package model
+package audit
 
 import (
 	"encoding/json"

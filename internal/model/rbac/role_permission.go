@@ -1,4 +1,4 @@
-package model
+package rbac
 
 // 角色-权限 关联表 (many2many)
 type RolePermission struct {

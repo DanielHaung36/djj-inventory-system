@@ -1,4 +1,4 @@
-package model
+package rbac
 
 // 用户-权限 关联表 (many2many)
 type UserPermission struct {

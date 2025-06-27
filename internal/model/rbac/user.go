@@ -1,6 +1,7 @@
-package model
+package rbac
 
 import (
+	"djj-inventory-system/internal/model"
 	"time"
 
 	"gorm.io/gorm"
@@ -18,10 +19,10 @@ type User struct {
 	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`                   // 最后更新时间
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`                                     // GORM 原生软删除字段（可选）
 	// 直接赋给用户的权限（新增）
-	Roles             []Role       `gorm:"many2many:user_roles;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"roles,omitempty"`
-	DirectPermissions []Permission `gorm:"many2many:user_permissions;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"direct_permissions,omitempty"`
+	Roles             []model.Role       `gorm:"many2many:user_roles;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"roles,omitempty"`
+	DirectPermissions []model.Permission `gorm:"many2many:user_permissions;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"direct_permissions,omitempty"`
 
 	// **NEW**: collect all perms through Role → RolePermission:
 	// 通过角色汇总的所有权限
-	Permissions []Permission `gorm:"-" json:"permissions,omitempty"`
+	Permissions []model.Permission `gorm:"-" json:"permissions,omitempty"`
 }
