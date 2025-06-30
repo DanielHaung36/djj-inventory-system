@@ -5,6 +5,7 @@ type InvoiceData map[string]Invoice
 
 // Invoice 对应每一单发票／报价单
 type Invoice struct {
+	LogoBase64         string `json:"logo_base64"`
 	CompanyName        string `json:"companyName"`
 	CompanyEmail       string `json:"companyEmail"`
 	CompanyPhone       string `json:"companyPhone"`
@@ -14,6 +15,7 @@ type Invoice struct {
 	InvoiceNumber      string `json:"invoiceNumber"`
 	InvoiceDate        string `json:"invoiceDate"`
 	InvoiceType        string `json:"invoiceType"`
+	IsQuote            bool   // 在模板里决定列头是 Unit Price 还是 Location
 	BillingAddress     string `json:"billingAddress"`
 	DeliveryAddress    string `json:"deliveryAddress"`
 	CustomerCompany    string `json:"customerCompany"`

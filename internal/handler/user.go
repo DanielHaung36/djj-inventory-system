@@ -123,7 +123,7 @@ func (h *UserHandler) List(c *gin.Context) {
 			LastLogin: u.UpdatedAt.Format(time.RFC3339),
 		})
 	}
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, dtos)
 }
 
 // Update godoc
@@ -283,22 +283,31 @@ func (h *UserHandler) RevokeUserPermissions(c *gin.Context) {
 */
 
 // ListUserPermissions 获取用户所有直接+继承权限
+// ListUserPermissions godoc
+// @Summary      获取用户权限及最新修改信息
+// @Description  返回权限 ID 列表及最近一次修改的时间和操作者
+// @Tags         users
+// @Produce      json
+// @Param        id   path     int  true  "用户 ID"
+// @Success      200  {object} handler.UserPermissionDataDTO
+// @Failure      500  {object} gin.H
+// @Router       /users/{id}/permissions [get]
+
 func (h *UserHandler) ListUserPermissions(c *gin.Context) {
 	uid, _ := strconv.Atoi(c.Param("id"))
-	user, err := h.svc.GetWithAllPermissions(c.Request.Context(), uint(uid))
+	data, err := h.svc.GetUserPermissionData(c.Request.Context(), uint(uid))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	permDTOs := make([]PermissionDTO, 0, len(user.Permissions))
-	for _, p := range user.Permissions {
-		permDTOs = append(permDTOs, PermissionDTO{
-			ID:          p.ID,
-			Name:        p.Name,
-			Label:       p.Label,
-			Description: p.Description,
-		})
+	dto := UserPermissionDataDTO{
+		UserID:      data.UserID,
+		Permissions: data.PermissionIDs,
+		ModifiedBy:  data.ModifiedBy,
+	}
+	if !data.LastModified.IsZero() {
+		dto.LastModified = data.LastModified.Format(time.RFC3339)
 	}
 	// 返回扁平化后的 Permissions 字段
-	c.JSON(http.StatusOK, permDTOs)
+	c.JSON(http.StatusOK, dto)
 }

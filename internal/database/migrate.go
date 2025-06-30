@@ -1,56 +1,44 @@
 package database
 
 import (
+	"djj-inventory-system/internal/handler"
 	"djj-inventory-system/internal/logger"
-	"djj-inventory-system/internal/model"
+	"djj-inventory-system/internal/model/rbac"
 	"fmt"
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
-// 各模块的 CRUD 权限组
-var permissionGroups = map[string][]string{
-	"users":       {"users.create", "users.read", "users.update", "users.delete"},
-	"roles":       {"roles.create", "roles.read", "roles.update", "roles.delete"},
-	"permissions": {"permissions.create", "permissions.read", "permissions.update", "permissions.delete"},
-	"products":    {"products.create", "products.read", "products.update", "products.delete"},
-	"quotes":      {"quotes.create", "quotes.read", "quotes.update", "quotes.delete"},
-	"orders":      {"orders.create", "orders.read", "orders.update", "orders.delete"},
-	"inventory":   {"inventory.create", "inventory.read", "inventory.update", "inventory.delete"},
-}
-
-// initPermissions 写入所有 CRUD 权限，并把所有权限都授给 admin
+// initPermissions 用 handler.PermissionModules 初始化所有权限，并授予 admin 全权限
 func initPermissions(db *gorm.DB) error {
-	// 写入权限
-	for _, perms := range permissionGroups {
-		for _, name := range perms {
-			p := model.Permission{Name: name}
-			if err := db.
-				FirstOrCreate(&p, model.Permission{Name: name}).
-				Error; err != nil {
-				return fmt.Errorf("init perm %s: %w", name, err)
-			}
+	// 1. 写入所有权限
+	var allPerms []rbac.Permission
+	for _, mod := range handler.PermissionModules {
+		allPerms = append(allPerms, mod.Permissions...)
+	}
+	for _, p := range allPerms {
+		if err := db.FirstOrCreate(&p, rbac.Permission{ID: p.ID}).Error; err != nil {
+			return fmt.Errorf("init perm %s: %w", p.Name, err)
 		}
 	}
-	logger.Infof("✔ permissions initialized")
+	logger.Infof("✔ all business permissions initialized")
 
-	// 授 admin 全权限
-	var admin model.Role
+	// 2. 授 admin 全权限
+	var admin rbac.Role
 	if err := db.Where("name = ?", "admin").First(&admin).Error; err != nil {
 		return err
 	}
-	for _, perms := range permissionGroups {
-		for _, name := range perms {
-			var p model.Permission
-			db.Where("name = ?", name).First(&p)
-			rp := model.RolePermission{
-				RoleID:       admin.ID,
-				PermissionID: p.ID,
-			}
-			if err := db.FirstOrCreate(&rp, rp).Error; err != nil {
-				return fmt.Errorf("grant %s to admin: %w", name, err)
-			}
+	for _, p := range allPerms {
+		var perm rbac.Permission
+		db.Where("id = ?", p.ID).First(&perm)
+		rp := rbac.RolePermission{
+			RoleID:       admin.ID,
+			PermissionID: perm.ID,
+		}
+		if err := db.FirstOrCreate(&rp, rp).Error; err != nil {
+			return fmt.Errorf("grant %s to admin: %w", p.Name, err)
 		}
 	}
 	logger.Infof("✔ admin granted all permissions")
@@ -59,7 +47,7 @@ func initPermissions(db *gorm.DB) error {
 
 // initRoles 会确保有以下这几类角色（含普通和领导）
 func initRoles(db *gorm.DB) error {
-	roles := []model.Role{
+	roles := []rbac.Role{
 		{Name: "admin"},
 
 		{Name: "sales_rep"},
@@ -75,7 +63,7 @@ func initRoles(db *gorm.DB) error {
 		{Name: "finance_leader"},
 	}
 	for _, r := range roles {
-		if err := db.FirstOrCreate(&r, model.Role{Name: r.Name}).Error; err != nil {
+		if err := db.FirstOrCreate(&r, rbac.Role{Name: r.Name}).Error; err != nil {
 			return fmt.Errorf("init role %s: %w", r.Name, err)
 		}
 	}
@@ -107,13 +95,15 @@ func initUsers(db *gorm.DB) error {
 	}
 
 	for _, ru := range rawUsers {
+		hash, err := bcrypt.GenerateFromPassword([]byte(ru.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("hash password for %s: %w", ru.Username, err)
+		}
 		// 1) 创建或查找用户
-		u := model.User{
-			Username: ru.Username,
-			// TODO: 这里用实际的 bcrypt.Hash(ru.Password)
-			Email: ru.Email,
-
-			PasswordHash: ru.Password,
+		u := rbac.User{
+			Username:     ru.Username,
+			Email:        ru.Email,
+			PasswordHash: string(hash),
 		}
 		if err := db.
 			Where("username = ?", u.Username).
@@ -122,11 +112,11 @@ func initUsers(db *gorm.DB) error {
 		}
 
 		// 2) 绑定角色
-		var role model.Role
+		var role rbac.Role
 		if err := db.Where("name = ?", ru.Role).First(&role).Error; err != nil {
 			return fmt.Errorf("find role %s: %w", ru.Role, err)
 		}
-		ur := model.UserRole{UserID: u.ID, RoleID: role.ID}
+		ur := rbac.UserRole{UserID: u.ID, RoleID: role.ID}
 		if err := db.FirstOrCreate(&ur, ur).Error; err != nil {
 			return fmt.Errorf("assign role %s to user %s: %w", ru.Role, u.Username, err)
 		}
@@ -152,8 +142,8 @@ func initUsers(db *gorm.DB) error {
 		}
 		if strings.Contains(ru.Role, "finance") {
 			// Finance leader = admin 下的所有模块，仅次于 admin
-			for grp := range permissionGroups {
-				if err := grantGroup(db, grp, ru.Role); err != nil {
+			for _, mod := range handler.PermissionModules {
+				if err := grantGroup(db, mod.Module, ru.Role); err != nil {
 					return err
 				}
 			}
@@ -167,26 +157,34 @@ func initUsers(db *gorm.DB) error {
 // grantGroup 给某个角色(roleID)批量挂上某个模块(groupName)的所有权限
 func grantGroup(db *gorm.DB, groupName, roleName string) error {
 	// 先把角色查出来
-	var role model.Role
+	var role rbac.Role
 	if err := db.Where("name = ?", roleName).First(&role).Error; err != nil {
 		return fmt.Errorf("find role %s: %w", roleName, err)
 	}
 
-	perms, ok := permissionGroups[groupName]
-	if !ok {
+	var perms []rbac.Permission
+	found := false
+	for _, mod := range handler.PermissionModules {
+		if mod.Module == groupName {
+			perms = mod.Permissions
+			found = true
+			break
+		}
+	}
+	if !found {
 		return fmt.Errorf("unknown permission group %s", groupName)
 	}
-	for _, name := range perms {
-		var p model.Permission
-		if err := db.Where("name = ?", name).First(&p).Error; err != nil {
-			return fmt.Errorf("find perm %s: %w", name, err)
+	for _, perm := range perms {
+		var p rbac.Permission
+		if err := db.Where("id = ?", perm.ID).First(&p).Error; err != nil {
+			return fmt.Errorf("find perm %s: %w", perm.Name, err)
 		}
-		rp := model.RolePermission{
+		rp := rbac.RolePermission{
 			RoleID:       role.ID,
 			PermissionID: p.ID,
 		}
 		if err := db.FirstOrCreate(&rp, rp).Error; err != nil {
-			return fmt.Errorf("grant %s to %s: %w", name, roleName, err)
+			return fmt.Errorf("grant %s to %s: %w", perm.Name, roleName, err)
 		}
 	}
 	return nil

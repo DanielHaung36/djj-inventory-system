@@ -4,7 +4,6 @@ package repository
 import (
 	"context"
 	"djj-inventory-system/internal/model/sales"
-	"djj-inventory-system/internal/service"
 	"errors"
 
 	"gorm.io/gorm"
@@ -41,7 +40,7 @@ func (r *QuoteRepository) FindByID(ctx context.Context, id uint) (*sales.Quote, 
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, gorm.ErrRecordNotFound
+			return nil, nil
 		}
 		return nil, err
 	}

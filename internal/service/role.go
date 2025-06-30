@@ -3,22 +3,23 @@ package service
 
 import (
 	"context"
+	audit2 "djj-inventory-system/internal/model/audit"
+	"djj-inventory-system/internal/model/rbac"
 	"encoding/json"
 	"fmt"
 
-	"djj-inventory-system/internal/model"
 	"djj-inventory-system/internal/pkg/audit"
 	"djj-inventory-system/internal/repository"
 )
 
 type RoleService interface {
-	Create(ctx context.Context, name string) (*model.Role, error)
-	Get(ctx context.Context, id uint) (*model.Role, error)
-	List(ctx context.Context) ([]model.Role, error)
-	Update(ctx context.Context, id uint, name string) (*model.Role, error)
+	Create(ctx context.Context, name string) (*rbac.Role, error)
+	Get(ctx context.Context, id uint) (*rbac.Role, error)
+	List(ctx context.Context) ([]rbac.Role, error)
+	Update(ctx context.Context, id uint, name string) (*rbac.Role, error)
 	Delete(ctx context.Context, id uint) error
 	// 新增：
-	ListPermissions(ctx context.Context, roleID uint) ([]model.Permission, error)
+	ListPermissions(ctx context.Context, roleID uint) ([]rbac.Permission, error)
 }
 
 type roleService struct {
@@ -30,17 +31,17 @@ func NewRoleService(r repository.RoleRepo, aud audit.Recorder) RoleService {
 	return &roleService{repo: r, aud: aud}
 }
 
-func (s *roleService) Create(ctx context.Context, name string) (*model.Role, error) {
-	r := &model.Role{Name: name}
+func (s *roleService) Create(ctx context.Context, name string) (*rbac.Role, error) {
+	r := &rbac.Role{Name: name}
 	if err := s.repo.Create(r); err != nil {
 		return nil, fmt.Errorf("create role: %w", err)
 	}
 	// 审计：写入创建前后的快照
-	s.aud.Record(ctx, model.AuditedTableRoles, r.ID, "create", *r)
+	s.aud.Record(ctx, audit2.AuditedTableRoles, r.ID, "create", *r)
 	return r, nil
 }
 
-func (s *roleService) Get(ctx context.Context, id uint) (*model.Role, error) {
+func (s *roleService) Get(ctx context.Context, id uint) (*rbac.Role, error) {
 	r, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("get role %d: %w", id, err)
@@ -48,7 +49,7 @@ func (s *roleService) Get(ctx context.Context, id uint) (*model.Role, error) {
 	return r, nil
 }
 
-func (s *roleService) List(ctx context.Context) ([]model.Role, error) {
+func (s *roleService) List(ctx context.Context) ([]rbac.Role, error) {
 	roles, err := s.repo.FindAll()
 	if err != nil {
 		return nil, fmt.Errorf("list roles: %w", err)
@@ -56,7 +57,7 @@ func (s *roleService) List(ctx context.Context) ([]model.Role, error) {
 	return roles, nil
 }
 
-func (s *roleService) Update(ctx context.Context, id uint, name string) (*model.Role, error) {
+func (s *roleService) Update(ctx context.Context, id uint, name string) (*rbac.Role, error) {
 	// 先读取旧值以便审计
 	old, err := s.repo.FindByID(id)
 	if err != nil {
@@ -71,7 +72,7 @@ func (s *roleService) Update(ctx context.Context, id uint, name string) (*model.
 	}
 
 	// 审计：写入更新前的快照
-	s.aud.Record(ctx, model.AuditedTableRoles, id, "update", string(before))
+	s.aud.Record(ctx, audit2.AuditedTableRoles, id, "update", string(before))
 	return old, nil
 }
 
@@ -89,11 +90,11 @@ func (s *roleService) Delete(ctx context.Context, id uint) error {
 	}
 
 	// 审计：写入删除前的快照
-	s.aud.Record(ctx, model.AuditedTableRoles, id, "delete", string(before))
+	s.aud.Record(ctx, audit2.AuditedTableRoles, id, "delete", string(before))
 	return nil
 }
 
-func (s *roleService) ListPermissions(ctx context.Context, roleID uint) ([]model.Permission, error) {
+func (s *roleService) ListPermissions(ctx context.Context, roleID uint) ([]rbac.Permission, error) {
 	perms, err := s.repo.ListPermissions(roleID)
 	if err != nil {
 		return nil, err

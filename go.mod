@@ -4,7 +4,7 @@ go 1.23.4
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
-	github.com/chromedp/cdproto v0.0.0-20250403032234-65de8f5d025b
+	github.com/chromedp/cdproto v0.0.0-20250625204652-ce640014f9ac
 	github.com/chromedp/chromedp v0.13.7
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/gin-gonic/gin v1.10.1

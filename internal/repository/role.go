@@ -2,37 +2,37 @@
 package repository
 
 import (
-	"djj-inventory-system/internal/model"
+	"djj-inventory-system/internal/model/rbac"
 
 	"gorm.io/gorm"
 )
 
 type RoleRepo interface {
-	Create(r *model.Role) error
-	FindByID(id uint) (*model.Role, error)
-	FindAll() ([]model.Role, error)
-	Update(r *model.Role) error
+	Create(r *rbac.Role) error
+	FindByID(id uint) (*rbac.Role, error)
+	FindAll() ([]rbac.Role, error)
+	Update(r *rbac.Role) error
 	Delete(id uint) error
-	ListPermissions(roleID uint) ([]model.Permission, error)
+	ListPermissions(roleID uint) ([]rbac.Permission, error)
 }
 
 type roleGormRepo struct{ db *gorm.DB }
 
-func NewRoleRepo(db *gorm.DB) RoleRepo             { return &roleGormRepo{db} }
-func (r *roleGormRepo) Create(x *model.Role) error { return r.db.Create(x).Error }
-func (r *roleGormRepo) FindByID(id uint) (*model.Role, error) {
-	var x model.Role
+func NewRoleRepo(db *gorm.DB) RoleRepo            { return &roleGormRepo{db} }
+func (r *roleGormRepo) Create(x *rbac.Role) error { return r.db.Create(x).Error }
+func (r *roleGormRepo) FindByID(id uint) (*rbac.Role, error) {
+	var x rbac.Role
 	return &x, r.db.First(&x, id).Error
 }
-func (r *roleGormRepo) FindAll() ([]model.Role, error) {
-	var xs []model.Role
+func (r *roleGormRepo) FindAll() ([]rbac.Role, error) {
+	var xs []rbac.Role
 	return xs, r.db.Find(&xs).Error
 }
-func (r *roleGormRepo) Update(x *model.Role) error { return r.db.Save(x).Error }
-func (r *roleGormRepo) Delete(id uint) error       { return r.db.Delete(&model.Role{}, id).Error }
+func (r *roleGormRepo) Update(x *rbac.Role) error { return r.db.Save(x).Error }
+func (r *roleGormRepo) Delete(id uint) error      { return r.db.Delete(&rbac.Role{}, id).Error }
 
-func (r *roleGormRepo) ListPermissions(roleID uint) ([]model.Permission, error) {
-	var perms []model.Permission
+func (r *roleGormRepo) ListPermissions(roleID uint) ([]rbac.Permission, error) {
+	var perms []rbac.Permission
 	// 假设 role_permissions 是你 join 表，字段是 role_id / permission_id
 	err := r.db.
 		Table("permissions").

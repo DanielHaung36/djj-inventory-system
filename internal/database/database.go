@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/model"
+	"djj-inventory-system/internal/model/audit"
+	"djj-inventory-system/internal/model/catalog"
+	"djj-inventory-system/internal/model/rbac"
+	"djj-inventory-system/internal/model/sales"
 	"fmt"
 	"log"
 
@@ -58,7 +62,7 @@ func Migrate(db *gorm.DB) {
 		{
 			ID: "20250611_init_rbac",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&model.User{}, &model.Role{}, &model.Permission{}, &model.UserRole{}, &model.RolePermission{})
+				return tx.AutoMigrate(&rbac.User{}, &rbac.Role{}, &rbac.Permission{}, &rbac.UserRole{}, &rbac.RolePermission{})
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable("user_roles", "role_permissions", "permissions", "roles", "users")
@@ -67,10 +71,71 @@ func Migrate(db *gorm.DB) {
 		{
 			ID: "20250611_add_audit_history",
 			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&model.AuditedHistory{})
+				return tx.AutoMigrate(&audit.AuditedHistory{})
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Migrator().DropTable("audit_histories")
+			},
+		},
+		// v3: 产品表
+		{
+			ID: "20250625_add_products",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&catalog.Product{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("products")
+			},
+		},
+		// v4: 报价单 + 报价明细
+		{
+			ID: "20250625_add_quotes",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&sales.Quote{}, &sales.QuoteItem{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"quote_items", "quotes",
+				)
+			},
+		},
+		// v5: 订单 + 订单明细
+		{
+			ID: "20250625_add_orders",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&sales.Order{}, &sales.OrderItem{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"order_items", "orders",
+				)
+			},
+		},
+		// v6: 拣货单 + 拣货单明细
+		{
+			ID: "20250625_add_picking_lists",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&sales.PickingList{}, &model.PickingListItem{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"picking_list_items", "picking_lists",
+				)
+			},
+		},
+		{
+			ID: "20250627_add_customers",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&catalog.Customer{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("customers")
 			},
 		},
 		//{
@@ -115,6 +180,10 @@ func Migrate(db *gorm.DB) {
 	}
 	//初始化RBAC
 	InitRBACSeed(db)
+	if err := SeedTestData(db); err != nil {
+		logger.Fatalf("❌ 测试数据种子失败: %v", err)
+	}
+
 }
 
 // InitRBACSeed 全量种子：角色、权限、用户、角色-权限关联

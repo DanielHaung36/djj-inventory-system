@@ -1,9 +1,11 @@
 package sales
 
 import (
+	"djj-inventory-system/internal/model/rbac"
+	"time"
+
 	"djj-inventory-system/internal/model/catalog"
 	"djj-inventory-system/internal/model/company"
-	"time"
 )
 
 // Quote 对应数据库表 quotes
@@ -16,8 +18,9 @@ type Quote struct {
 	CustomerID    uint             `gorm:"not null" json:"customerId"`
 	Customer      catalog.Customer `gorm:"foreignKey:CustomerID"` // ← 新增
 	QuoteNumber   string           `gorm:"size:50;unique;not null" json:"quoteNumber"`
-	SalesRep      string           `gorm:"size:100" json:"salesRep"`
-	QuoteDate     time.Time        `gorm:"type:date;not null" json:"quoteDate"`
+	SalesRepID    uint             `gorm:"not null" json:"salesRepId"`
+	SalesRepUser  rbac.User        `gorm:"foreignKey:SalesRepID" json:"salesRepUser"`
+	QuoteDate     time.Time        `gorm:"type:date;not null"     json:"quoteDate"`
 	Currency      string           `gorm:"type:currency_code_enum;default:'AUD'" json:"currency"`
 	SubTotal      float64          `gorm:"type:numeric(14,2);not null" json:"subTotal"`
 	GSTTotal      float64          `gorm:"type:numeric(14,2);not null" json:"gstTotal"`

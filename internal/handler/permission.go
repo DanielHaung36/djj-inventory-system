@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/service"
 	"net/http"
 	"strconv"
@@ -17,11 +18,12 @@ type PermHandler struct {
 func NewPermHandler(rg *gin.RouterGroup, svc service.PermService) {
 	h := &PermHandler{svc: svc}
 	grp := rg.Group("/permissions")
-	grp.POST("", h.Create)       // 创建权限
-	grp.GET("", h.List)          // 列表
-	grp.GET("/:id", h.Get)       // 取单条
-	grp.PUT("/:id", h.Update)    // 更新
-	grp.DELETE("/:id", h.Delete) // 删除
+	grp.POST("", h.Create)             // 创建权限
+	grp.GET("", h.List)                // 列表
+	grp.GET("/:id", h.Get)             // 取单条
+	grp.PUT("/:id", h.Update)          // 更新
+	grp.DELETE("/:id", h.Delete)       // 删除
+	grp.GET("/modules", h.ListModules) // 新增：权限模块分组
 }
 
 // Create godoc
@@ -131,4 +133,52 @@ func (h *PermHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// GET /permissions/modules
+func (h *PermHandler) ListModules(c *gin.Context) {
+	// 1. 从数据库获取所有权限
+	perms, err := h.svc.List(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 2. 按模块分组返回
+	modules := make([]PermissionModuleDTO, len(PermissionModules))
+	for i, mod := range PermissionModules {
+		modules[i] = PermissionModuleDTO{
+			Module:      mod.Module,
+			Icon:        mod.Icon,
+			Description: mod.Description,
+			Permissions: make([]PermissionDTO, 0, len(mod.Permissions)),
+		}
+
+		// 遍历该模块下的权限ID，从数据库权限列表中找到对应权限
+		for _, expectedPerm := range mod.Permissions {
+			for _, dbPerm := range perms {
+				if dbPerm.ID == expectedPerm.ID {
+					modules[i].Permissions = append(modules[i].Permissions, PermissionDTO{
+						ID:          dbPerm.ID,
+						Name:        dbPerm.Name,
+						Label:       dbPerm.Label,
+						Description: dbPerm.Description,
+					})
+					break
+				}
+			}
+		}
+	}
+
+	logger.Infof("✔ returning %d permission modules with %d total permissions",
+		len(modules),
+		func() int {
+			total := 0
+			for _, m := range modules {
+				total += len(m.Permissions)
+			}
+			return total
+		}(),
+	)
+	c.JSON(http.StatusOK, modules)
 }

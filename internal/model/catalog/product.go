@@ -11,7 +11,11 @@ type Product struct {
 	ID                 uint           `gorm:"primaryKey" json:"id"`
 	DJJCode            string         `gorm:"size:50;unique;not null" json:"djjCode"`
 	NameCN             string         `gorm:"size:100;not null" json:"nameCn"`
-	NameEN             string         `gorm:"size:100" json:"nameEn"`
+	NameEN             string         `json:"nameEn"`         // e.g. "LM930 / LM938 Sieve Bucket with Teeth"
+	Specs              string         `json:"specs"`          // plain-text 技术参数块
+	TechnicalSpecs     datatypes.JSON `json:"technicalSpecs"` // 结构化参数
+	MarketingInfo      string         `json:"marketingInfo"`  // 卖点文案
+	Remarks            string         `json:"remarks"`        // 后台备注
 	Manufacturer       string         `gorm:"size:100" json:"manufacturer"`
 	ManufacturerCode   string         `gorm:"size:100" json:"manufacturerCode"`
 	Supplier           string         `gorm:"size:100" json:"supplier"`
@@ -19,8 +23,6 @@ type Product struct {
 	CategoryID         *uint          `json:"categoryId,omitempty"`
 	SubcategoryID      *uint          `json:"subcategoryId,omitempty"`
 	TertiaryCategoryID *uint          `json:"tertiaryCategoryId,omitempty"`
-	TechnicalSpecs     datatypes.JSON `json:"technicalSpecs"`
-	Specs              string         `gorm:"type:text" json:"specs"`
 	Price              float64        `gorm:"type:numeric(12,2);not null" json:"price"`
 	RRPPrice           float64        `gorm:"type:numeric(12,2)" json:"rrpPrice"`
 	Currency           string         `gorm:"type:currency_code_enum;default:'AUD'" json:"currency"`
@@ -28,8 +30,6 @@ type Product struct {
 	ApplicationStatus  string         `gorm:"type:application_status_enum;default:'open'" json:"applicationStatus"`
 	ProductType        string         `gorm:"type:product_type_enum;default:'others'" json:"productType"`
 	StandardWarranty   string         `gorm:"size:100" json:"standardWarranty"`
-	Remarks            string         `gorm:"type:text" json:"remarks"`
-	MarketingInfo      string         `gorm:"type:text" json:"marketingInfo"`
 	TrainingDocs       string         `gorm:"type:text" json:"trainingDocs"`
 	WeightKG           float64        `gorm:"type:numeric(10,2)" json:"weightKg"`
 	LiftCapacityKG     float64        `gorm:"type:numeric(10,2)" json:"liftCapacityKg"`
@@ -42,6 +42,8 @@ type Product struct {
 	CreatedAt          time.Time      `json:"createdAt"`
 	UpdatedAt          time.Time      `json:"updatedAt"`
 	IsDeleted          bool           `gorm:"default:false" json:"isDeleted"`
+	Attachments        []Attachment   `gorm:"polymorphic:Ref;polymorphicValue:product" json:"attachments,omitempty"`
+	VinEngine          string         `gorm:"size:100" json:"vinEngine"`
 }
 
 func (Product) TableName() string { return "products" }

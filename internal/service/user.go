@@ -3,34 +3,47 @@ package service
 
 import (
 	"context"
+	audit2 "djj-inventory-system/internal/model/audit"
+	"djj-inventory-system/internal/model/rbac"
 	_ "encoding/json"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	_ "gorm.io/gorm"
 
-	"djj-inventory-system/internal/model"
 	"djj-inventory-system/internal/pkg/audit"
 	"djj-inventory-system/internal/repository"
 )
 
 type UserService interface {
-	Create(ctx context.Context, username, email, password string, roleIDs []uint) (*model.User, error)
-	Get(ctx context.Context, id uint) (*model.User, error)
-	List(ctx context.Context) ([]model.User, error)
-	Update(ctx context.Context, id uint, email, password *string) (*model.User, error)
+	Create(ctx context.Context, username, email, password string, roleIDs []uint) (*rbac.User, error)
+	Get(ctx context.Context, id uint) (*rbac.User, error)
+	List(ctx context.Context) ([]rbac.User, error)
+	Update(ctx context.Context, id uint, email, password *string) (*rbac.User, error)
 	Delete(ctx context.Context, id uint) error
-	Authenticate(ctx context.Context, username, password string) (*model.User, error)
+	Authenticate(ctx context.Context, username, password string) (*rbac.User, error)
 	AssignRole(ctx context.Context, userID, roleID uint) error
 	RemoveRole(ctx context.Context, userID, roleID uint) error
-	ListRoles(ctx context.Context, userID uint) ([]model.Role, error)
+	ListRoles(ctx context.Context, userID uint) ([]rbac.Role, error)
 
 	// 用户直接权限管理
 	GrantUserPermissions(ctx context.Context, userID uint, permIDs []uint) error
 	RevokeUserPermissions(ctx context.Context, userID uint, permIDs []uint) error
 
 	// 获取合并后的所有权限（角色继承 + 直接赋予）
-	GetWithAllPermissions(ctx context.Context, userID uint) (*model.User, error)
+	GetWithAllPermissions(ctx context.Context, userID uint) (*rbac.User, error)
+
+	// 获取用户权限及最近的修改信息
+	GetUserPermissionData(ctx context.Context, userID uint) (*UserPermissionData, error)
+}
+
+// UserPermissionData 包含权限ID及最近的修改信息
+type UserPermissionData struct {
+	UserID        uint
+	PermissionIDs []uint
+	LastModified  time.Time
+	ModifiedBy    string
 }
 
 type userService struct {
@@ -43,7 +56,7 @@ func NewUserService(r repository.UserRepo, aud audit.Recorder) UserService {
 }
 
 // ---- 实现 Authenticate ----
-func (s *userService) Authenticate(ctx context.Context, username, password string) (*model.User, error) {
+func (s *userService) Authenticate(ctx context.Context, username, password string) (*rbac.User, error) {
 	// 1) 根据用户名查用户
 	u, err := s.repo.FindByUsername(username)
 	if err != nil {
@@ -73,12 +86,12 @@ func (s *userService) Authenticate(ctx context.Context, username, password strin
 	return u, nil
 }
 
-func (s *userService) Create(ctx context.Context, username, email, password string, roleIDs []uint) (*model.User, error) {
+func (s *userService) Create(ctx context.Context, username, email, password string, roleIDs []uint) (*rbac.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
-	u := &model.User{
+	u := &rbac.User{
 		Username:     username,
 		Email:        email,
 		PasswordHash: string(hash),
@@ -96,19 +109,19 @@ func (s *userService) Create(ctx context.Context, username, email, password stri
 	//分配权限
 
 	// 审计
-	s.aud.Record(ctx, model.AuditedTableUsers, u.ID, "create", *u)
+	s.aud.Record(ctx, audit2.AuditedTableUsers, u.ID, "create", *u)
 	return u, nil
 }
 
-func (s *userService) Get(ctx context.Context, id uint) (*model.User, error) {
+func (s *userService) Get(ctx context.Context, id uint) (*rbac.User, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s *userService) List(ctx context.Context) ([]model.User, error) {
+func (s *userService) List(ctx context.Context) ([]rbac.User, error) {
 	return s.repo.FindAll()
 }
 
-func (s *userService) Update(ctx context.Context, id uint, email, password *string) (*model.User, error) {
+func (s *userService) Update(ctx context.Context, id uint, email, password *string) (*rbac.User, error) {
 	u, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -130,7 +143,7 @@ func (s *userService) Update(ctx context.Context, id uint, email, password *stri
 	if err := s.repo.Update(u); err != nil {
 		return nil, err
 	}
-	s.aud.Record(ctx, model.AuditedTableUsers, u.ID, "update", before)
+	s.aud.Record(ctx, audit2.AuditedTableUsers, u.ID, "update", before)
 	return u, nil
 }
 
@@ -143,7 +156,7 @@ func (s *userService) Delete(ctx context.Context, id uint) error {
 	if err := s.repo.Delete(id); err != nil {
 		return err
 	}
-	s.aud.Record(ctx, model.AuditedTableUsers, id, "delete", before)
+	s.aud.Record(ctx, audit2.AuditedTableUsers, id, "delete", before)
 	return nil
 }
 
@@ -152,7 +165,7 @@ func (s *userService) AssignRole(ctx context.Context, userID, roleID uint) error
 		return err
 	}
 	// 审计：记录 user_role 表的变更
-	s.aud.Record(ctx, model.AuditedTableUserRoles, userID, "assign_role", map[string]uint{"role_id": roleID})
+	s.aud.Record(ctx, audit2.AuditedTableUserRoles, userID, "assign_role", map[string]uint{"role_id": roleID})
 	return nil
 }
 
@@ -160,11 +173,11 @@ func (s *userService) RemoveRole(ctx context.Context, userID, roleID uint) error
 	if err := s.repo.RemoveRole(userID, roleID); err != nil {
 		return err
 	}
-	s.aud.Record(ctx, model.AuditedTableUserRoles, userID, "remove_role", map[string]uint{"role_id": roleID})
+	s.aud.Record(ctx, audit2.AuditedTableUserRoles, userID, "remove_role", map[string]uint{"role_id": roleID})
 	return nil
 }
 
-func (s *userService) ListRoles(ctx context.Context, userID uint) ([]model.Role, error) {
+func (s *userService) ListRoles(ctx context.Context, userID uint) ([]rbac.Role, error) {
 	return s.repo.ListRoles(userID)
 }
 
@@ -173,7 +186,7 @@ func (s *userService) GrantUserPermissions(ctx context.Context, userID uint, per
 	if err := s.repo.GrantUserPermissions(userID, permIDs); err != nil {
 		return err
 	}
-	s.aud.Record(ctx, model.AuditedTableUserRoles, userID,
+	s.aud.Record(ctx, audit2.AuditedTableUserRoles, userID,
 		"grant_user_permissions", map[string]interface{}{"perm_ids": permIDs})
 	return nil
 }
@@ -183,17 +196,45 @@ func (s *userService) RevokeUserPermissions(ctx context.Context, userID uint, pe
 	if err := s.repo.RevokeUserPermissions(userID, permIDs); err != nil {
 		return err
 	}
-	s.aud.Record(ctx, model.AuditedTableUserRoles, userID,
+	s.aud.Record(ctx, audit2.AuditedTableUserRoles, userID,
 		"revoke_user_permissions", map[string]interface{}{"perm_ids": permIDs})
 	return nil
 }
 
 // GetWithAllPermissions 获取用户角色继承 + 直接赋予后的全部权限
-func (s *userService) GetWithAllPermissions(ctx context.Context, userID uint) (*model.User, error) {
+func (s *userService) GetWithAllPermissions(ctx context.Context, userID uint) (*rbac.User, error) {
 	// repo 层预加载了 Roles.Permissions 和 DirectPermissions，并做了扁平去重
 	u, err := s.repo.FindWithAllPerms(userID)
 	if err != nil {
 		return nil, err
 	}
 	return u, nil
+}
+
+// GetUserPermissionData 返回用户权限及最后的修改记录
+func (s *userService) GetUserPermissionData(ctx context.Context, userID uint) (*UserPermissionData, error) {
+	u, err := s.repo.FindWithAllPerms(userID)
+	if err != nil {
+		return nil, err
+	}
+	permIDs := make([]uint, 0, len(u.Permissions))
+	for _, p := range u.Permissions {
+		permIDs = append(permIDs, p.ID)
+	}
+
+	var last time.Time
+	var by string
+	if ah, err := s.repo.LastPermissionChange(userID); err == nil && ah != nil {
+		last = ah.ChangedAt
+		if modUser, err := s.repo.FindByID(uint(ah.ChangedBy)); err == nil && modUser != nil {
+			by = modUser.Username
+		}
+	}
+
+	return &UserPermissionData{
+		UserID:        userID,
+		PermissionIDs: permIDs,
+		LastModified:  last,
+		ModifiedBy:    by,
+	}, nil
 }

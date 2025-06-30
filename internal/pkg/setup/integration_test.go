@@ -2,6 +2,7 @@
 package setup_test
 
 import (
+	"djj-inventory-system/internal/model/rbac"
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
@@ -10,7 +11,6 @@ import (
 
 	"djj-inventory-system/internal/database"
 	"djj-inventory-system/internal/logger"
-	"djj-inventory-system/internal/model"
 	"djj-inventory-system/internal/pkg/setup"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -35,8 +35,8 @@ func newTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("打开内存 sqlite 失败: %v", err)
 	}
 	if err := db.AutoMigrate(
-		&model.User{}, &model.Role{}, &model.Permission{},
-		&model.UserRole{}, &model.RolePermission{},
+		&rbac.User{}, &rbac.Role{}, &rbac.Permission{},
+		&rbac.UserRole{}, &rbac.RolePermission{},
 	); err != nil {
 		t.Fatalf("自动 migrate 失败: %v", err)
 	}

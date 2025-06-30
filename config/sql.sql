@@ -225,19 +225,29 @@ CREATE INDEX idx_stores_manager ON stores(manager_id);
 
 -- 客户表
 CREATE TABLE customers (
-                           id         SERIAL               PRIMARY KEY,      -- 客户ID
-                           store_id   INT     REFERENCES stores(id),          -- 门店ID
-                           type       customer_type_enum  NOT NULL DEFAULT 'retail', -- 客户类型
-                           name       VARCHAR(100)        NOT NULL,          -- 客户名称
-                           phone      VARCHAR(20),                           -- 电话
-                           email      VARCHAR(100),                          -- 邮箱
-                           address    VARCHAR(255),                          -- 地址
-                           version    BIGINT               NOT NULL DEFAULT 1,-- 乐观锁
-                           created_at TIMESTAMPTZ          NOT NULL DEFAULT now(), -- 创建时间
-                           updated_at TIMESTAMPTZ          NOT NULL DEFAULT now(), -- 更新时间
-                           is_deleted BOOLEAN             NOT NULL DEFAULT FALSE    -- 软删除
+                           id               SERIAL               PRIMARY KEY,        -- 客户ID，自增
+                           store_id         INT      REFERENCES stores(id),           -- 所属门店
+                           type             customer_type_enum NOT NULL DEFAULT 'retail',
+    -- 客户类型：retail/wholesale/online
+                           name             VARCHAR(100) NOT NULL,                   -- 客户公司或个人名称
+
+    -- 默认账单与送货地址快照
+                           billing_address  VARCHAR(255) NOT NULL,                   -- 默认账单地址
+                           shipping_address VARCHAR(255) NOT NULL,                   -- 默认送货地址
+
+    -- 默认联系人快照
+                           contact_name     VARCHAR(100) NOT NULL,                   -- 联系人姓名
+                           contact_phone    VARCHAR(50)  NOT NULL,                   -- 联系人电话
+                           contact_email    VARCHAR(100),                            -- 联系人邮箱
+
+                           version          BIGINT    NOT NULL DEFAULT 1,            -- 乐观锁版本
+                           created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),      -- 创建时间
+                           updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),      -- 更新时间
+                           is_deleted       BOOLEAN   NOT NULL DEFAULT FALSE         -- 软删除标记
 );
-CREATE INDEX idx_customers_store ON customers(store_id);
+
+CREATE INDEX idx_customers_store  ON customers(store_id);
+CREATE INDEX idx_customers_type   ON customers(type);
 
 -- ===========================================
 -- 5. 币种与汇率
@@ -313,6 +323,27 @@ CREATE TABLE products (
 CREATE INDEX idx_products_supplier  ON products(supplier);
 CREATE INDEX idx_products_category  ON products(category_id);
 CREATE INDEX idx_products_rrp_price ON products(rrp_price);
+
+-- ===========================================
+-- 新增：公司表（companies）
+-- ===========================================
+CREATE TABLE companies (
+                           id            SERIAL       PRIMARY KEY,                  -- 自增主键
+                           code          VARCHAR(50)  UNIQUE NOT NULL,              -- 公司代码（例如 DJJ_PERTH）
+                           name          VARCHAR(100) NOT NULL,                     -- 公司名称
+                           email         VARCHAR(100),                              -- 联系邮箱
+                           phone         VARCHAR(50),                               -- 联系电话
+                           website       VARCHAR(255),                              -- 公司官网
+                           abn           VARCHAR(20),                               -- Australian Business Number
+                           address       VARCHAR(255),                              -- 公司地址
+                           logo_base64   TEXT,                                      -- Logo 的 Base64 编码
+                           bank_name     VARCHAR(100),                              -- 银行户名
+                           bsb           VARCHAR(20),                               -- BSB 号
+                           account_no    VARCHAR(50),                               -- 银行账号
+                           created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),       -- 记录创建时间
+                           updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now()        -- 记录更新时间
+);
+
 
 -- ===========================================
 -- 8. 新品上线审核记录表
@@ -402,38 +433,76 @@ CREATE TABLE inventory_logs (
 CREATE INDEX idx_invlog_inventory ON inventory_logs(inventory_id);
 
 -- ===========================================
--- 订单与明细表 订单主表：quote_id 引用报价、customer_id/supplier_id 引用客户/供应商
+-- 订单主表（orders）
+--    —— 客户确认报价后生成的正式订单
 -- ===========================================
 CREATE TABLE orders (
-                        id             SERIAL                 PRIMARY KEY,           -- 订单ID
-                        order_type     order_type_enum  NOT NULL,                     -- 'purchase' 或 'sales'
-                        order_number   VARCHAR(50)     UNIQUE NOT NULL,               -- 订单编号
-                        store_id       INT            REFERENCES stores(id),          -- 门店
-                        quote_id       INT            REFERENCES quotes(id),          -- 来源报价单
-                        customer_id    INT            REFERENCES customers(id),       -- 购买方（销售单时）
-                        supplier_id    INT            REFERENCES suppliers(id),       -- 供应方（采购单时）
-                        order_date     DATE           NOT NULL,                       -- 订单日期
-                        status         order_status_enum NOT NULL DEFAULT 'draft',     -- 当前状态
-                        currency       currency_code_enum NOT NULL DEFAULT 'AUD',      -- 币种
-                        total_amount   NUMERIC(14,2),                                  -- 总额（可冗余）
-                        created_at     TIMESTAMPTZ    NOT NULL DEFAULT now(),          -- 创建时间
-                        updated_at     TIMESTAMPTZ    NOT NULL DEFAULT now()           -- 更新时间
+                        id               SERIAL               PRIMARY KEY,      -- 订单ID
+                        quote_id         INT      REFERENCES quotes(id),        -- 来源报价单
+                        order_number     VARCHAR(50) UNIQUE NOT NULL,           -- 订单编号
+                        store_id         INT      REFERENCES stores(id),        -- 门店ID
+                        customer_id      INT      NOT NULL REFERENCES customers(id),-- 客户ID
+                        order_date       DATE    NOT NULL,                      -- 下单日期
+                        currency         currency_code_enum NOT NULL DEFAULT 'AUD',-- 币种
+                        shipping_address VARCHAR(255) NOT NULL,                 -- 最终发货地址
+                        total_amount     NUMERIC(14,2),                         -- 合计金额（可冗余）
+                        status           order_status_enum NOT NULL DEFAULT 'draft', -- 订单状态
+                        created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),    -- 创建时间
+                        updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()     -- 更新时间
 );
-CREATE INDEX idx_orders_store ON orders(store_id);
+
+CREATE INDEX idx_orders_quote    ON orders(quote_id);
+CREATE INDEX idx_orders_store    ON orders(store_id);
+CREATE INDEX idx_orders_customer ON orders(customer_id);
+CREATE INDEX idx_orders_status   ON orders(status);
 
 -- ===========================================
--- 订单明细：同样强制关联 products
+-- 订单明细表（order_items）
+--    —— 每条订单的产品/服务行项
 -- ===========================================
 CREATE TABLE order_items (
-                             id            SERIAL        PRIMARY KEY,                   -- 明细ID
-                             order_id      INT   NOT NULL REFERENCES orders(id) ON DELETE CASCADE, -- 归属于哪个订单
-                             product_id    INT   NOT NULL REFERENCES products(id),      -- 产品ID
-                             quantity      INT   NOT NULL,                              -- 数量
-                             unit_price    NUMERIC(12,2) NOT NULL                       -- 锁定时的单价
+                             id           SERIAL        PRIMARY KEY,                   -- 明细ID
+                             order_id     INT   NOT NULL REFERENCES orders(id) ON DELETE CASCADE,-- 关联订单
+                             product_id   INT   NOT NULL REFERENCES products(id),  -- 产品ID
+                             quantity     INT   NOT NULL,                          -- 数量
+                             unit_price   NUMERIC(12,2) NOT NULL                   -- 锁定时单价
 );
 
-CREATE INDEX idx_items_order   ON order_items(order_id);
-CREATE INDEX idx_items_product ON order_items(product_id);
+CREATE INDEX idx_order_items_order   ON order_items(order_id);
+CREATE INDEX idx_order_items_product ON order_items(product_id);
+
+-- ===========================================
+-- 拣货单主表（picking_lists）
+--    —— 根据订单生成，用于仓库拣货
+-- ===========================================
+CREATE TABLE picking_lists (
+                               id               SERIAL               PRIMARY KEY,      -- 拣货单ID
+                               picking_number   VARCHAR(50) UNIQUE NOT NULL,           -- 拣货单编号
+                               order_id         INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,-- 来源订单
+                               delivery_address VARCHAR(255) NOT NULL,                 -- 复制自 order.shipping_address
+                               status           VARCHAR(20) NOT NULL DEFAULT 'draft',  -- 拣货状态（draft/picked/done 等）
+                               created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),    -- 创建时间
+                               updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()     -- 更新时间
+);
+CREATE INDEX idx_picking_lists_order  ON picking_lists(order_id);
+CREATE INDEX idx_picking_lists_status ON picking_lists(status);
+
+-- ===========================================
+-- 拣货单明细表（picking_list_items）
+--    —— 每条拣货单的行项目
+-- ===========================================
+CREATE TABLE picking_list_items (
+                                    id               SERIAL PRIMARY KEY,                    -- 明细ID
+                                    picking_list_id  INT    NOT NULL REFERENCES picking_lists(id) ON DELETE CASCADE,-- 关联拣货单
+                                    product_id       INT    NOT NULL REFERENCES products(id),-- 产品ID
+                                    quantity         INT    NOT NULL,                        -- 数量
+                                    location         VARCHAR(100),                           -- 库位（可选）
+                                    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()      -- 创建时间
+);
+
+CREATE INDEX idx_picking_items_list   ON picking_list_items(picking_list_id);
+CREATE INDEX idx_picking_items_product ON picking_list_items(product_id);
+
 
 -- ===========================================
 -- 12. 发票与付款表
@@ -500,17 +569,24 @@ CREATE TABLE approval_logs (
 -- ===========================================
 -- 15. 报价申请与报价单表
 -- ===========================================
+-- ===========================================
+-- 报价单主表（quotes）
+--    —— 客户下单前，销售填写的报价
+-- ===========================================
 CREATE TABLE quotes (
                         id             SERIAL               PRIMARY KEY,           -- 报价单ID
                         store_id       INT      REFERENCES stores(id),            -- 门店ID
+                        customer_id    INT      NOT NULL REFERENCES customers(id), -- 客户ID
                         quote_number   VARCHAR(50) NOT NULL UNIQUE,               -- 报价编号
-                        customer_id    INT      REFERENCES customers(id),         -- 客户ID
-                        sales_rep      VARCHAR(100),                               -- 销售代表
+                        sales_rep      VARCHAR(100) NOT NULL,                     -- 销售代表
                         quote_date     DATE      NOT NULL,                        -- 报价日期
                         currency       currency_code_enum NOT NULL DEFAULT 'AUD', -- 币种
                         sub_total      NUMERIC(14,2)       NOT NULL,               -- 小计
                         gst_total      NUMERIC(14,2)       NOT NULL,               -- GST 金额
                         total_amount   NUMERIC(14,2)       NOT NULL,               -- 总金额
+                                                                                   -- 快照客户地址，免得后续变更影响历史
+                        billing_address  VARCHAR(255) NOT NULL,                   -- 账单地址
+                        shipping_address VARCHAR(255) NOT NULL,                   -- 发货地址
                         remarks        TEXT,                                      -- 备注
                         warranty_notes TEXT,                                      -- 保修及特殊备注
                         status         approval_status_enum DEFAULT 'pending',    -- 报价审批状态
@@ -518,22 +594,31 @@ CREATE TABLE quotes (
                         updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()         -- 更新时间
 );
 
+CREATE INDEX idx_quotes_store    ON quotes(store_id);
+CREATE INDEX idx_quotes_customer ON quotes(customer_id);
+CREATE INDEX idx_quotes_status   ON quotes(status);
+
 -- ===========================================
--- 4. 新增：报价明细表 quote_items
+-- 报价单明细表（quote_items）
+--    —— 每条报价的产品/服务行项
 -- ===========================================
 CREATE TABLE quote_items (
-                             id           SERIAL       PRIMARY KEY,              -- 明细ID
-                             quote_id     INT    NOT NULL REFERENCES quotes(id) ON DELETE CASCADE, -- 报价单ID
-                             product_id   INT    REFERENCES products(id),       -- 产品ID（如需）
-                             description  TEXT         NOT NULL,                -- 描述
-                             quantity     INT          NOT NULL,                -- 数量
-                             unit         VARCHAR(20)  NOT NULL,                -- 单位
-                             unit_price   NUMERIC(12,2) NOT NULL,               -- 单价
-                             discount     NUMERIC(12,2) DEFAULT 0,              -- 折扣
-                             total_price  NUMERIC(14,2) NOT NULL,               -- 金额（含折扣后）
-                             goods_nature goods_nature_enum DEFAULT 'contract', -- 货物性质
-                             created_at   TIMESTAMPTZ NOT NULL DEFAULT now()    -- 创建时间
+                             id           SERIAL       PRIMARY KEY,                  -- 明细ID
+                             quote_id     INT    NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+    -- 关联报价单
+                             product_id   INT    REFERENCES products(id),            -- 产品ID（可选）
+                             description  TEXT         NOT NULL,                     -- 描述
+                             quantity     INT          NOT NULL,                     -- 数量
+                             unit         VARCHAR(20)  NOT NULL,                     -- 单位
+                             unit_price   NUMERIC(12,2) NOT NULL,                    -- 单价
+                             discount     NUMERIC(12,2) DEFAULT 0,                   -- 折扣
+                             total_price  NUMERIC(14,2) NOT NULL,                    -- 金额（含折扣后）
+                             goods_nature goods_nature_enum DEFAULT 'contract',      -- 货物性质
+                             created_at   TIMESTAMPTZ NOT NULL DEFAULT now()         -- 创建时间
 );
+
+CREATE INDEX idx_quote_items_quote ON quote_items(quote_id);
+CREATE INDEX idx_quote_items_product ON quote_items(product_id);
 
 -- ===========================================
 -- 16. 统一审计历史表 & 枚举更新
