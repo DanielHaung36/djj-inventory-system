@@ -7,6 +7,7 @@ import "time"
 type Customer struct {
 	ID        uint      `gorm:"primaryKey;column:id" json:"id"`
 	StoreID   uint      `gorm:"column:store_id"      json:"store_id"`
+	Store     Store     `gorm:"foreignKey:StoreID" json:"store"`
 	Type      string    `gorm:"type:customer_type_enum;default:'retail';column:type" json:"type"`
 	Name      string    `gorm:"size:100;not null;column:name"   json:"name"`
 	Phone     string    `gorm:"size:20;column:phone"            json:"phone"`

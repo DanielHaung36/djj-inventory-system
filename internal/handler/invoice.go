@@ -2,10 +2,10 @@
 package handler
 
 import (
+	"djj-inventory-system/internal/service"
 	"net/http"
 	"strconv"
 
-	"djj-pdf/internal/service"
 	"github.com/gin-gonic/gin"
 )
 

@@ -3,6 +3,7 @@ package service
 
 import (
 	"djj-inventory-system/internal/model"
+	"djj-inventory-system/internal/model/sales"
 	"djj-inventory-system/internal/repository"
 	"encoding/base64"
 	"io/ioutil"
@@ -36,11 +37,10 @@ func (s *InvoiceService) GenerateQuotePDF(quoteID uint) ([]byte, error) {
 	}
 
 	// 2) 把 model.Quote 转成渲染用的 model.Invoice
-	inv := model.Invoice{
+	inv := sales.Invoice{
 		InvoiceNumber:   q.QuoteNumber,
 		InvoiceDate:     q.QuoteDate.Format("2006/01/02"),
 		InvoiceType:     "SALES QUOTE",
-		IsQuote:         true,
 		BillingAddress:  q.Customer.Address,
 		DeliveryAddress: q.Customer.Address,
 		CustomerCompany: q.Customer.Name,
@@ -97,11 +97,11 @@ func (s *InvoiceService) GenerateQuotePDF(quoteID uint) ([]byte, error) {
 }
 
 // toInvoiceItems 把 repo QuoteItem 转到 Invoice Item
-func toInvoiceItems(qis []model.QuoteItem) []model.Item {
-	out := make([]model.Item, len(qis))
+func toInvoiceItems(qis []sales.QuoteItem) []sales.Item {
+	out := make([]sales.Item, len(qis))
 	for i, qi := range qis {
-		out[i] = model.Item{
-			DjjCode:           qi.Product.DJJCode,
+		out[i] = sales.Item{
+			DJJCode:           qi.Product.DJJCode,
 			Description:       qi.Description,
 			DetailDescription: qi.Product.Specs, // or qi.DetailDescription
 			Quantity:          qi.Quantity,

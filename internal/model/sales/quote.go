@@ -10,6 +10,7 @@ import (
 type Quote struct {
 	ID            uint             `gorm:"primaryKey" json:"id"`
 	StoreID       uint             `gorm:"not null" json:"storeId"`
+	Store         catalog.Store    `gorm:"foreignKey:StoreID" json:"store"`
 	CompanyID     uint             `json:"company_id"` // ← 新增
 	Company       company.Company  `gorm:"foreignKey:CompanyID" json:"company"`
 	CustomerID    uint             `gorm:"not null" json:"customerId"`

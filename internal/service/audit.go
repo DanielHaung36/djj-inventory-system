@@ -1,7 +1,7 @@
 package service
 
 import (
-	"djj-inventory-system/internal/model"
+	"djj-inventory-system/internal/model/audit"
 	"encoding/json"
 	"time"
 
@@ -9,12 +9,12 @@ import (
 )
 
 // RecordAudit 在 audit_histories 里写一条记录
-func RecordAudit(db *gorm.DB, table model.AuditedTableEnum, recordID int, changedBy int, operation string, payload interface{}) error {
+func RecordAudit(db *gorm.DB, table audit.AuditedTableEnum, recordID int, changedBy int, operation string, payload interface{}) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	ah := model.AuditedHistory{
+	ah := audit.AuditedHistory{
 		TableName: table,
 		RecordID:  recordID,
 		ChangedBy: changedBy,
