@@ -2,21 +2,17 @@
 package service
 
 import (
-	"djj-inventory-system/internal/model"
-	"djj-inventory-system/internal/model/sales"
-	"djj-inventory-system/internal/repository"
 	"bytes"
 	"context"
 	"djj-inventory-system/assets"
 	"djj-inventory-system/internal/logger"
+	"djj-inventory-system/internal/repository"
 	"encoding/base64"
 	"fmt"
 	"html/template"
-	"path/filepath"
 	"time"
 
 	"djj-inventory-system/internal/model/sales"
-	"djj-inventory-system/internal/repository"
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -79,7 +75,6 @@ func (s *InvoiceService) GenerateQuotePDF(ctx context.Context, quoteID uint) ([]
 
 		InvoiceNumber:   q.QuoteNumber,
 		InvoiceDate:     q.QuoteDate.Format("2006/01/02"),
-		IsQuote:         true,
 		InvoiceType:     "SALES QUOTE",
 		IsQuote:         true,
 		BillingAddress:  q.Customer.Address,
@@ -94,11 +89,29 @@ func (s *InvoiceService) GenerateQuotePDF(ctx context.Context, quoteID uint) ([]
 		SubtotalAmount:  q.SubTotal,
 		GSTAmount:       q.GSTTotal,
 		TotalAmount:     q.TotalAmount,
-		Items:           toInvoiceItems(q.Items),
 		// company info, logo, bank details 可从配置或另一表读入
 	}
 
 	return s.renderAndPrintPDF(ctx, inv)
+}
+
+// toInvoiceItemsFromQuote 用来把 []QuoteItem 转成 []Item
+func toInvoiceItemsFromQuote(qis []sales.QuoteItem) []sales.Item {
+	out := make([]sales.Item, len(qis))
+	for i, qi := range qis {
+		out[i] = sales.Item{
+			DJJCode:           qi.Product.DJJCode,
+			Description:       qi.Description,
+			DetailDescription: qi.DetailDescription,
+			VinEngine:         qi.Product.VinEngine,
+			Quantity:          qi.Quantity,
+			// Quote 不用 Location，所以留空
+			UnitPrice: qi.UnitPrice,
+			Discount:  qi.Discount,
+			Subtotal:  qi.TotalPrice,
+		}
+	}
+	return out
 }
 
 func (s *InvoiceService) GeneratePickingPDF(ctx context.Context, orderID uint) ([]byte, error) {

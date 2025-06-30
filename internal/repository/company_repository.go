@@ -2,34 +2,60 @@ package repository
 
 import (
 	"context"
-	"djj-inventory-system/internal/model/company"
 	"errors"
 
 	"gorm.io/gorm"
+
+	"djj-inventory-system/internal/model/company"
 )
 
-// CompanyRepository 封装对 companies 表的访问
 type CompanyRepository struct {
 	DB *gorm.DB
 }
 
-// NewCompanyRepository 返回一个新的 CompanyRepository
 func NewCompanyRepository(db *gorm.DB) *CompanyRepository {
 	return &CompanyRepository{DB: db}
 }
 
-// FindDefault 从 companies 表中查出标记为默认的那家公司
+// FindDefault 加载 is_default = true 的那家
 func (r *CompanyRepository) FindDefault(ctx context.Context) (*company.Company, error) {
 	var co company.Company
 	err := r.DB.WithContext(ctx).
 		Where("is_default = ?", true).
 		First(&co).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	return &co, err
+}
 
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		}
+// FindByID 根据主键加载
+func (r *CompanyRepository) FindByID(ctx context.Context, id uint) (*company.Company, error) {
+	var co company.Company
+	err := r.DB.WithContext(ctx).First(&co, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	return &co, err
+}
+
+// FindByCode 根据唯一 code 加载
+func (r *CompanyRepository) FindByCode(ctx context.Context, code string) (*company.Company, error) {
+	var co company.Company
+	err := r.DB.WithContext(ctx).
+		Where("code = ?", code).
+		First(&co).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrNotFound
+	}
+	return &co, err
+}
+
+// ListAll 列出所有公司（分页／筛选可自行扩展）
+func (r *CompanyRepository) ListAll(ctx context.Context) ([]company.Company, error) {
+	var list []company.Company
+	if err := r.DB.WithContext(ctx).Find(&list).Error; err != nil {
 		return nil, err
 	}
-	return &co, nil
+	return list, nil
 }

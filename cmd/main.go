@@ -21,7 +21,7 @@ func main() {
 	defer logger.Sync()
 	// connect to DB
 	db := database.Connect()
-	router := setup.(db)
+	router := setup.NewRouter(db)
 
 	if err := router.Run("0.0.0.0:8080"); err != nil {
 		panic(err)
