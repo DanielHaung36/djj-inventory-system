@@ -30,7 +30,7 @@ func SessionAuthMiddleware() gin.HandlerFunc {
 		uid, err := auth.GetUserID(c.Request)
 		logger.Debugf("uid: %v", uid)
 		logger.Debugf(c.FullPath())
-		if c.FullPath() == "/api/login" || c.FullPath() == "/api/logout" || c.FullPath() == "/api/register" || c.FullPath() == "/api/roles" {
+		if c.FullPath() == "/api/auth/login" || c.FullPath() == "/api/auth//logout" || c.FullPath() == "/api/auth//register" || c.FullPath() == "/api/auth/roles" {
 			c.Next()
 			return // ← 加上这句 跑你的登录 handler 然后直接 return，不会再继续执行后面的登录检查中间件。
 		}

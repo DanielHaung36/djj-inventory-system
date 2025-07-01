@@ -21,4 +21,5 @@ type User struct {
 	Roles             []Role         `gorm:"many2many:user_roles;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"roles,omitempty"`
 	DirectPermissions []Permission   `gorm:"many2many:user_permissions;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"direct_permissions,omitempty"`
 	Permissions       []Permission   `gorm:"-" json:"permissions,omitempty"`
+	AvatarURL         string         `gorm:"size:255;not null" json:"avatar_url"`
 }

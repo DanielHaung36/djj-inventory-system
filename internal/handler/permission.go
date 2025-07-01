@@ -148,9 +148,9 @@ func (h *PermHandler) ListModules(c *gin.Context) {
 	modules := make([]PermissionModuleDTO, len(PermissionModules))
 	for i, mod := range PermissionModules {
 		modules[i] = PermissionModuleDTO{
-			Module:      mod.Module,
+			Module:      mod.Key,
 			Icon:        mod.Icon,
-			Description: mod.Description,
+			Description: mod.DescriptionZh,
 			Permissions: make([]PermissionDTO, 0, len(mod.Permissions)),
 		}
 

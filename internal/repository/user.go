@@ -4,7 +4,10 @@ package repository
 import (
 	"context"
 	"djj-inventory-system/internal/model/audit"
+	"djj-inventory-system/internal/model/catalog"
+	"djj-inventory-system/internal/model/company"
 	"djj-inventory-system/internal/model/rbac"
+	"fmt"
 	"strings"
 
 	"gorm.io/gorm"
@@ -24,10 +27,13 @@ type UserRepo interface {
 
 	// 查询角色对应的权限（role_permissions）
 	ListRolePermissions(ctx context.Context, userID uint) ([]rbac.Permission, error)
+	ListUserDirectPermissions(ctx context.Context, userID uint) ([]rbac.Permission, error)
+
+	GetStoreFullDetails(ctx context.Context, storeID uint) (*catalog.StoreDetails, error)
 	// 新增这一行
 	CreateWithRoles(ctx context.Context, u *rbac.User, roleNames []string) error
+	FindByEmail(email string) (*rbac.User, error)
 	FindByUsername(username string) (*rbac.User, error)
-
 	// 直接给用户批量增删权限
 	GrantUserPermissions(userID uint, permIDs []uint) error
 	RevokeUserPermissions(userID uint, permIDs []uint) error
@@ -157,6 +163,40 @@ func (r *userRepo) FindByUsername(username string) (*rbac.User, error) {
 	return &u, nil
 }
 
+func (r *userRepo) FindByEmail(email string) (*rbac.User, error) {
+	var u rbac.User
+	if err := r.db.
+		Preload("Roles"). // 加载 user_roles 关联的所有 Role
+		Where("email = ? AND is_deleted = FALSE", email).
+		First(&u).Error; err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+// GetStoreDetails 根据 storeID，一次性返回门店 + 区域 + 公司 信息
+func (r *userRepo) GetStoreDetails(ctx context.Context, storeID uint) (*catalog.StoreDetails, error) {
+	var sd catalog.StoreDetails
+	err := r.db.WithContext(ctx).
+		Table("stores AS s").
+		Select(`
+            s.id           AS id,
+            s.code         AS code,
+            s.name         AS name,
+            rg.name        AS region_name,
+            s.company_id   AS company_id,
+            co.name        AS company_name
+        `).
+		Joins("JOIN regions AS rg ON rg.id = s.region_id").
+		Joins("JOIN companies AS co ON co.id = s.company_id").
+		Where("s.id = ?", storeID).
+		Take(&sd).Error
+	if err != nil {
+		return nil, err
+	}
+	return &sd, nil
+}
+
 // userGormRepo 实现
 
 /*
@@ -189,6 +229,18 @@ func (r *userRepo) ListRolePermissions(ctx context.Context, userID uint) ([]rbac
 		Joins("JOIN role_permissions rp ON rp.permission_id = permissions.id").
 		Joins("JOIN user_roles ur ON ur.role_id = rp.role_id").
 		Where("ur.user_id = ?", userID).
+		Find(&perms).Error
+	return perms, err
+}
+
+// ListUserDirectPermissions 查询 user_permissions 表里，直接授给用户的所有权限
+func (r *userRepo) ListUserDirectPermissions(ctx context.Context, userID uint) ([]rbac.Permission, error) {
+	var perms []rbac.Permission
+	err := r.db.WithContext(ctx).
+		Table("permissions").
+		Select("permissions.*").
+		Joins("JOIN user_permissions up ON up.permission_id = permissions.id").
+		Where("up.user_id = ?", userID).
 		Find(&perms).Error
 	return perms, err
 }
@@ -268,4 +320,79 @@ func (r *userRepo) LastPermissionChange(userID uint) (*audit.AuditedHistory, err
 		return nil, err
 	}
 	return &ah, nil
+}
+
+// GetStoreFullDetails 用 storeID 查门店本身，然后顺序加载 Region、Company、Warehouses
+func (r *userRepo) GetStoreFullDetails(ctx context.Context, storeID uint) (*catalog.StoreDetails, error) {
+	var (
+		st  catalog.Store
+		rg  catalog.Region
+		co  company.Company
+		whs []catalog.Warehouse
+	)
+
+	// 1) 先拿门店
+	if err := r.db.WithContext(ctx).First(&st, storeID).Error; err != nil {
+		return nil, fmt.Errorf("GetStoreFullDetails: load store %d: %w", storeID, err)
+	}
+
+	// 2) 根据 RegionID 加载 Region
+	if err := r.db.WithContext(ctx).First(&rg, st.RegionID).Error; err != nil {
+		return nil, fmt.Errorf("GetStoreFullDetails: load region %d: %w", st.RegionID, err)
+	}
+
+	// 3) 根据 CompanyID 加载 Company
+	if err := r.db.WithContext(ctx).First(&co, st.CompanyID).Error; err != nil {
+		return nil, fmt.Errorf("GetStoreFullDetails: load company %d: %w", st.CompanyID, err)
+	}
+
+	// 4) 根据 RegionID，先从关联表拿 Warehouse IDs，再加载 Warehouses
+	var rw []catalog.RegionWarehouse
+	if err := r.db.WithContext(ctx).
+		Where("region_id = ?", rg.ID).
+		Find(&rw).Error; err != nil {
+		return nil, fmt.Errorf("GetStoreFullDetails: load region_warehouses for region %d: %w", rg.ID, err)
+	}
+	ids := make([]uint, len(rw))
+	for i, rel := range rw {
+		ids[i] = rel.WarehouseID
+	}
+	if len(ids) > 0 {
+		if err := r.db.WithContext(ctx).
+			Where("id IN ?", ids).
+			Find(&whs).Error; err != nil {
+			return nil, fmt.Errorf("GetStoreFullDetails: load warehouses %v: %w", ids, err)
+		}
+	}
+
+	return &catalog.StoreDetails{
+		Store:      st,
+		Region:     rg,
+		Company:    co,
+		Warehouses: whs,
+	}, nil
+}
+
+// ListWarehousesByRegion 仅返回某个 Region 下的所有 Warehouse
+func (r *userRepo) ListWarehousesByRegion(ctx context.Context, regionID uint) ([]catalog.Warehouse, error) {
+	// 也可以直接 JOIN region_warehouses，但是下面更直观
+	var rw []catalog.RegionWarehouse
+	if err := r.db.WithContext(ctx).
+		Where("region_id = ?", regionID).
+		Find(&rw).Error; err != nil {
+		return nil, fmt.Errorf("ListWarehousesByRegion: load region_warehouses: %w", err)
+	}
+	ids := make([]uint, len(rw))
+	for i, rel := range rw {
+		ids[i] = rel.WarehouseID
+	}
+	var whs []catalog.Warehouse
+	if len(ids) > 0 {
+		if err := r.db.WithContext(ctx).
+			Where("id IN ?", ids).
+			Find(&whs).Error; err != nil {
+			return nil, fmt.Errorf("ListWarehousesByRegion: load warehouses %v: %w", ids, err)
+		}
+	}
+	return whs, nil
 }

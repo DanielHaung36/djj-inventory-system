@@ -5,7 +5,7 @@ import "time"
 // Company 对应 companies 表
 type Company struct {
 	ID            uint      `gorm:"primaryKey" json:"id"`
-	Code          string    `gorm:"size:50;uniqueIndex;not null" json:"code"` // ← 新增：业务可用的唯一标识
+	Code          string    `gorm:"size:50;not null" json:"code"`
 	Name          string    `gorm:"size:100;not null"               json:"name"`
 	Email         string    `gorm:"size:100"                        json:"email"`
 	Phone         string    `gorm:"size:50"                         json:"phone"`

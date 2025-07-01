@@ -99,58 +99,69 @@ func initUsers(db *gorm.DB) error {
 		if err != nil {
 			return fmt.Errorf("hash password for %s: %w", ru.Username, err)
 		}
-		// 1) 创建或查找用户
 		u := rbac.User{
 			Username:     ru.Username,
 			Email:        ru.Email,
 			PasswordHash: string(hash),
+			StoreID:      1, // 或者按规则分配
 		}
-		if err := db.
-			Where("username = ?", u.Username).
+		if err := db.Where("username = ?", u.Username).
 			FirstOrCreate(&u).Error; err != nil {
 			return fmt.Errorf("init user %s: %w", u.Username, err)
 		}
+	}
+	logger.Infof("✔ users initialized")
+	return nil
+}
 
-		// 2) 绑定角色
-		var role rbac.Role
-		if err := db.Where("name = ?", ru.Role).First(&role).Error; err != nil {
-			return fmt.Errorf("find role %s: %w", ru.Role, err)
+func assignRoles(db *gorm.DB) error {
+	// 1) 先加载所有用户
+	var users []rbac.User
+	if err := db.Find(&users).Error; err != nil {
+		return fmt.Errorf("fetch users: %w", err)
+	}
+
+	for _, u := range users {
+		var roleName string
+		// 不再用 switch 精确匹配，而是前缀/包含匹配
+		switch {
+		case u.Username == "admin":
+			roleName = "admin"
+		case strings.HasPrefix(u.Username, "sales_leader"):
+			roleName = "sales_leader"
+		case strings.HasPrefix(u.Username, "sales_rep"):
+			roleName = "sales_rep"
+		case strings.HasPrefix(u.Username, "purchase_leader"):
+			roleName = "purchase_leader"
+		case strings.HasPrefix(u.Username, "purchase_rep"):
+			roleName = "purchase_rep"
+		case strings.HasPrefix(u.Username, "operations_leader"):
+			roleName = "operations_leader"
+		case strings.HasPrefix(u.Username, "operations_staff"):
+			roleName = "operations_staff"
+		case strings.HasPrefix(u.Username, "finance_leader"):
+			roleName = "finance_leader"
+		case strings.HasPrefix(u.Username, "finance_staff"):
+			roleName = "finance_staff"
+		default:
+			// 如果不是我们关心的角色，就跳过
+			continue
 		}
+
+		// 查出角色实体
+		var role rbac.Role
+		if err := db.Where("name = ?", roleName).First(&role).Error; err != nil {
+			return fmt.Errorf("find role %s: %w", roleName, err)
+		}
+
+		// 绑到 user_roles
 		ur := rbac.UserRole{UserID: u.ID, RoleID: role.ID}
 		if err := db.FirstOrCreate(&ur, ur).Error; err != nil {
-			return fmt.Errorf("assign role %s to user %s: %w", ru.Role, u.Username, err)
-		}
-
-		// 3) 给 leader 角色额外全部本模块权限
-		if strings.Contains(ru.Role, "sale") {
-			if err := grantGroup(db, "quotes", ru.Role); err != nil {
-				return err
-			}
-			if err := grantGroup(db, "orders", ru.Role); err != nil {
-				return err
-			}
-		}
-		if strings.Contains(ru.Role, "purchase") {
-			if err := grantGroup(db, "orders", ru.Role); err != nil {
-				return err
-			}
-		}
-		if strings.Contains(ru.Role, "operations") {
-			if err := grantGroup(db, "inventory", ru.Role); err != nil {
-				return err
-			}
-		}
-		if strings.Contains(ru.Role, "finance") {
-			// Finance leader = admin 下的所有模块，仅次于 admin
-			for _, mod := range handler.PermissionModules {
-				if err := grantGroup(db, mod.Module, ru.Role); err != nil {
-					return err
-				}
-			}
+			return fmt.Errorf("assign role %s to user %s: %w", roleName, u.Username, err)
 		}
 	}
 
-	logger.Infof("✔ users and user_roles initialized")
+	logger.Infof("✔ roles assigned to users")
 	return nil
 }
 
@@ -165,7 +176,7 @@ func grantGroup(db *gorm.DB, groupName, roleName string) error {
 	var perms []rbac.Permission
 	found := false
 	for _, mod := range handler.PermissionModules {
-		if mod.Module == groupName {
+		if mod.Key == groupName {
 			perms = mod.Permissions
 			found = true
 			break
@@ -187,5 +198,64 @@ func grantGroup(db *gorm.DB, groupName, roleName string) error {
 			return fmt.Errorf("grant %s to %s: %w", perm.Name, roleName, err)
 		}
 	}
+	return nil
+}
+
+// AutoGrantPermissions 遍历现有用户，根据绑定的角色授予对应的模块权限
+func AutoGrantPermissions(db *gorm.DB) error {
+	// 1) 取出所有用户
+	var users []rbac.User
+	if err := db.Find(&users).Error; err != nil {
+		return fmt.Errorf("fetch users: %w", err)
+	}
+
+	// 2) 遍历每个用户
+	for _, u := range users {
+		// 查出这个用户所有角色关联
+		var urs []rbac.UserRole
+		if err := db.Where("user_id = ?", u.ID).Find(&urs).Error; err != nil {
+			return fmt.Errorf("fetch roles for user %d: %w", u.ID, err)
+		}
+
+		for _, ur := range urs {
+			// 查出角色实体
+			var role rbac.Role
+			if err := db.First(&role, ur.RoleID).Error; err != nil {
+				return fmt.Errorf("load role %d: %w", ur.RoleID, err)
+			}
+
+			// 根据角色名决定要给哪些权限组
+			switch role.Name {
+			case "sales_leader", "sales_rep":
+				// 不论是 leader 还是 rep，都给 quote 和 sales 模块的权限
+				if err := grantGroup(db, "quote", role.Name); err != nil {
+					return err
+				}
+				if err := grantGroup(db, "sales", role.Name); err != nil {
+					return err
+				}
+
+			case "purchase_leader", "purchase_rep":
+				// leader/rep 一样，给 sales 模块权限
+				if err := grantGroup(db, "sales", role.Name); err != nil {
+					return err
+				}
+
+			case "operations_leader", "operations_staff":
+				// leader/staff 一样，给 inventory 模块权限
+				if err := grantGroup(db, "inventory", role.Name); err != nil {
+					return err
+				}
+
+			case "finance_leader", "finance_staff":
+				// leader/staff 一样，给 finance 模块权限
+				if err := grantGroup(db, "finance", role.Name); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	logger.Infof("✔ all existing users granted permissions according to their roles")
 	return nil
 }

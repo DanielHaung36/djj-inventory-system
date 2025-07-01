@@ -55,104 +55,134 @@ func InitGormDB(db *sql.DB) *gorm.DB {
 	logger.Infof("成功使用 GORM 连接到数据库")
 	return gormDB
 }
-func ensureEnums(db *gorm.DB) {
-	scripts := []string{
-		// 产品状态枚举
-		`DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_status_enum') THEN
-            CREATE TYPE product_status_enum AS ENUM (
-              'draft','pending_tech','pending_purchase','pending_finance',
-              'ready_published','published','rejected','closed'
-            );
-          END IF;
-        END$$;`,
-
-		// 审批流程状态枚举
-		`DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'application_status_enum') THEN
-            CREATE TYPE application_status_enum AS ENUM ('open','closed');
-          END IF;
-        END$$;`,
-
-		// 货物性质枚举
-		`DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'goods_nature_enum') THEN
-            CREATE TYPE goods_nature_enum AS ENUM (
-              'contract','multi_contract','partial_contract','warranty',
-              'gift','self_purchased','consignment'
-            );
-          END IF;
-        END$$;`,
-
-		// 客户类型枚举
-		`DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'customer_type_enum') THEN
-            CREATE TYPE customer_type_enum AS ENUM ('retail','wholesale','online');
-          END IF;
-        END$$;`,
-
-		// 订单类型枚举
-		`DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_type_enum') THEN
-            CREATE TYPE order_type_enum AS ENUM ('purchase','sales');
-          END IF;
-        END$$;`,
-
-		// 产品主分类枚举
-		`DO $$
-        BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_type_enum') THEN
-            CREATE TYPE product_type_enum AS ENUM ('machine','parts','attachment','tools','others');
-          END IF;
-        END$$;`,
-	}
-
-	for _, sql := range scripts {
-		if err := db.Exec(sql).Error; err != nil {
-			log.Fatalf("failed to ensure enum exists: %v", err)
-		}
-	}
-}
 
 func Migrate(db *gorm.DB) {
 
 	// 在 AutoMigrate 之前
-	// 先执行枚举保证
-	ensureEnums(db)
+	stmt := `
+			DO $$
+			BEGIN
+			  -- 产品状态枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_status_enum') THEN
+				CREATE TYPE product_status_enum AS ENUM (
+				  'draft',
+				  'pending_tech',
+				  'pending_purchase',
+				  'pending_finance',
+				  'ready_published',
+				  'published',
+				  'rejected',
+				  'closed'
+				);
+			  END IF;
+		   -- 审批流程状态枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'application_status_enum') THEN
+				CREATE TYPE application_status_enum AS ENUM (
+				  'open',    -- 审批中
+				  'closed'   -- 已结束
+				);
+			  END IF;
+			  -- 货物性质枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'goods_nature_enum') THEN
+				CREATE TYPE goods_nature_enum AS ENUM (
+				  'contract',
+				  'multi_contract',
+				  'partial_contract',
+				  'warranty',
+				  'gift',
+				  'self_purchased',
+				  'consignment'
+				);
+			  END IF;
+			
+			  -- 审批结果枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'approval_status_enum') THEN
+				CREATE TYPE approval_status_enum AS ENUM (
+				  'pending',
+				  'approved',
+				  'rejected'
+				);
+			  END IF;
+			
+			  -- 库存状态枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'stock_status_enum') THEN
+				CREATE TYPE stock_status_enum AS ENUM (
+				  'pending',
+				  'in_stock',
+				  'not_applicable'
+				);
+			  END IF;
+			
+			  -- 订单状态枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status_enum') THEN
+				CREATE TYPE order_status_enum AS ENUM (
+				  'draft',
+				  'ordered',
+				  'deposit_received',
+				  'final_payment_received',
+				  'pre_delivery_inspection',
+				  'shipped',
+				  'delivered',
+				  'order_closed',
+				  'cancelled'
+				);
+			  END IF;
+			
+			  -- 币种代码枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'currency_code_enum') THEN
+				CREATE TYPE currency_code_enum AS ENUM (
+				  'AUD',
+				  'USD',
+				  'CNY',
+				  'EUR',
+				  'GBP'
+				);
+			  END IF;
+			
+			  -- 客户类型枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'customer_type_enum') THEN
+				CREATE TYPE customer_type_enum AS ENUM (
+				  'retail',
+				  'wholesale',
+				  'online'
+				);
+			  END IF;
+			
+			  -- 订单类型枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_type_enum') THEN
+				CREATE TYPE order_type_enum AS ENUM (
+				  'purchase',
+				  'sales'
+				);
+			  END IF;
+              -- 客户类型枚举
+			  IF NOT EXISTS (
+				SELECT 1 FROM pg_type WHERE typname = 'customer_type_enum'
+			  ) THEN
+				CREATE TYPE customer_type_enum AS ENUM (
+				  'retail',    -- 零售
+				  'wholesale', -- 批发
+				  'online'     -- 电商
+				);
+			  END IF;
+			  -- 产品主分类枚举
+			  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_type_enum') THEN
+				CREATE TYPE product_type_enum AS ENUM (
+				  'machine',
+				  'parts',
+				  'attachment',
+				  'tools',
+				  'others'
+				);
+			  END IF;
+			END$$;
+			`
+	if err := db.Exec(stmt).Error; err != nil {
+		log.Fatalf("failed to ensure currency_code_enum exists: %v", err)
+	}
 
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		// v1: 初始的 RBAC 表
-
-		{
-			ID: "20250701_add_companies",
-			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&company.Company{})
-			},
-			Rollback: func(tx *gorm.DB) error {
-				return tx.Migrator().DropTable("companies")
-			},
-		},
-		{
-			ID: "20250701_add_catalog",
-			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(
-					&catalog.Store{},
-					&catalog.Region{},
-					&catalog.Warehouse{},
-					&catalog.RegionWarehouse{}, // ← 加上这一行
-				)
-			},
-			Rollback: func(tx *gorm.DB) error {
-				return tx.Migrator().DropTable(
-					"region_warehouses", "regions", "warehouses", "stores",
-				)
-			},
-		},
 		{
 			ID: "20250627_add_customers",
 			Migrate: func(tx *gorm.DB) error {
@@ -162,7 +192,25 @@ func Migrate(db *gorm.DB) {
 				return tx.Migrator().DropTable("customers")
 			},
 		},
-
+		{
+			ID: "20250701_add_companies",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&company.Company{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("customers")
+			},
+		},
+		{
+			ID: "20250701_add_catalog",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&catalog.Store{},
+					&catalog.Region{},
+					&catalog.Warehouse{},
+					&catalog.RegionWarehouse{}, // ← 确保在这里
+				)
+			}},
 		{
 			ID: "20250611_init_rbac",
 			Migrate: func(tx *gorm.DB) error {
@@ -233,7 +281,7 @@ func Migrate(db *gorm.DB) {
 				)
 			},
 		},
-
+		// 在你 migrate.go 的 migrations 列表里，追加一段：
 		//{
 		//	ID: "20250611_add_deleted_at_to_users",
 		//	Migrate: func(tx *gorm.DB) error {
@@ -275,23 +323,29 @@ func Migrate(db *gorm.DB) {
 		log.Fatalf("could not migrate: %v", err)
 	}
 	//初始化RBAC
-	InitRBACSeed(db)
-	if err := SeedTestData(db); err != nil {
-		logger.Fatalf("❌ 测试数据种子失败: %v", err)
-	}
-
-}
-
-// InitRBACSeed 全量种子：角色、权限、用户、角色-权限关联
-func InitRBACSeed(db *gorm.DB) {
 	if err := initRoles(db); err != nil {
 		logger.Fatalf("❌ initRoles: %v", err)
 	}
 	if err := initPermissions(db); err != nil {
 		logger.Fatalf("❌ initPermissions: %v", err)
 	}
+	if err := NewSeeder(db).Run(); err != nil {
+		logger.Fatalf("❌ 测试数据种子失败: %v", err)
+	}
+	InitRBACSeed(db)
+
+}
+
+// InitRBACSeed 全量种子：角色、权限、用户、角色-权限关联
+func InitRBACSeed(db *gorm.DB) {
 	if err := initUsers(db); err != nil {
 		logger.Fatalf("❌ initUsers: %v", err)
+	}
+	if err := assignRoles(db); err != nil {
+		logger.Fatalf("❌ assignRoles: %v", err)
+	}
+	if err := AutoGrantPermissions(db); err != nil {
+		logger.Fatalf("❌ AutoGrantPermissions: %v", err)
 	}
 	logger.Infof("🎉 database seeding completed")
 }

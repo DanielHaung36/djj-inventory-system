@@ -1,14 +1,15 @@
 package handler
 
 import (
-	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/pkg/auth"
 	"djj-inventory-system/internal/service"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 var jwtSecret = []byte("DJJ_JWT_SECRET")
@@ -20,7 +21,7 @@ type AuthHandler struct {
 // NewAuthHandler 把 Session middleware 和 三个路由都挂到同一个 group
 func NewAuthHandler(rg *gin.RouterGroup, us service.UserService) {
 	h := &AuthHandler{userSvc: us}
-	grp := rg.Group("") // 挂在/api下
+	grp := rg.Group("auth") // 挂在/api下
 	grp.POST("/register", h.Register)
 	grp.POST("/login", h.Login)
 	grp.POST("/logout", h.Logout)
@@ -92,39 +93,73 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Authenticate returns a User with Roles and Permissions preloaded
-	u, err := h.userSvc.Authenticate(c, in.Username, in.Password)
+	u, sd, err := h.userSvc.Authenticate(c, in.Email, in.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "用户名或密码错误"})
 		return
 	}
-
+	var rolePerms []string
+	for i := 0; i < len(u.Permissions); i++ {
+		rolePerms = append(rolePerms, u.Permissions[i].Name)
+	}
 	// extract role names
-	roleNames := make([]string, len(u.Roles))
-	for i, r := range u.Roles {
-		roleNames[i] = r.Name
+	permSet := make(map[string]struct{}, len(rolePerms)+len(u.DirectPermissions))
+	for _, name := range rolePerms {
+		permSet[name] = struct{}{}
 	}
-
-	// extract permission names
-	permNames := make([]string, len(u.Permissions))
-	for i, p := range u.Permissions {
-		permNames[i] = p.Name
+	for _, p := range u.DirectPermissions {
+		permSet[p.Name] = struct{}{}
 	}
-
-	// prepare session data
-	sd := &auth.SessionData{
-		UserID:      u.ID,
-		Roles:       roleNames,
-		Permissions: permNames,
+	finalPerms := make([]string, 0, len(permSet))
+	for name := range permSet {
+		finalPerms = append(finalPerms, name)
 	}
+	role := strings.Join(func() []string {
+		names := make([]string, len(u.Roles))
+		for i, r := range u.Roles {
+			names[i] = r.Name
+		}
+		return names
+	}(), ",")
 
-	// write the securecookie
-	if err := auth.SetSession(sd, c.Writer); err != nil {
-		logger.Errorf("SetSession err: %v", err)
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "无法写入会话"})
+	// 5. 生成 JWT，包含 sub/role/permissions
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":         u.ID,
+		"name":        u.Username, // ← 新增这一行
+		"role":        role,
+		"permissions": finalPerms,
+		"exp":         time.Now().Add(24 * time.Hour).Unix(),
+		"avatar_url":  u.AvatarURL,
+		"sd":          sd,
+	})
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate token"})
 		return
 	}
+	// 5. 写入 HttpOnly Cookie
+	//    maxAge 单位是秒； path、domain、secure、httpOnly 根据你的需求调整
+	c.SetCookie(
+		"access_token", // name
+		tokenString,    // value
+		24*3600,        // maxAge: 24h
+		"/",            // path
+		"",             // domain: 改成你的域名，或留空字符串让浏览器自动匹配当前域
+		true,           // secure: 生产环境请设为 true (HTTPS)
+		true,           // httpOnly: JS 无法读取
+	)
+	// 6. 返回给前端
+	c.JSON(http.StatusOK, gin.H{
+		"token": tokenString,
+		"user": gin.H{
+			"id":           u.ID,
+			"name":         u.Username,
+			"email":        u.Email,
+			"role":         role,
+			"permissions":  finalPerms,
+			"storedetails": sd,
+		}})
 
-	c.JSON(http.StatusOK, ResponseMessage{Message: "登录成功"})
 }
 
 // Logout godoc

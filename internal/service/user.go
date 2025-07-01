@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	audit2 "djj-inventory-system/internal/model/audit"
+	"djj-inventory-system/internal/model/catalog"
 	"djj-inventory-system/internal/model/rbac"
 	_ "encoding/json"
 	"fmt"
@@ -22,7 +23,7 @@ type UserService interface {
 	List(ctx context.Context) ([]rbac.User, error)
 	Update(ctx context.Context, id uint, email, password *string) (*rbac.User, error)
 	Delete(ctx context.Context, id uint) error
-	Authenticate(ctx context.Context, username, password string) (*rbac.User, error)
+	Authenticate(ctx context.Context, username, password string) (*rbac.User, *catalog.StoreDetails, error)
 	AssignRole(ctx context.Context, userID, roleID uint) error
 	RemoveRole(ctx context.Context, userID, roleID uint) error
 	ListRoles(ctx context.Context, userID uint) ([]rbac.Role, error)
@@ -56,34 +57,57 @@ func NewUserService(r repository.UserRepo, aud audit.Recorder) UserService {
 }
 
 // ---- 实现 Authenticate ----
-func (s *userService) Authenticate(ctx context.Context, username, password string) (*rbac.User, error) {
+func (s *userService) Authenticate(ctx context.Context, username, password string) (*rbac.User, *catalog.StoreDetails, error) {
 	// 1) 根据用户名查用户
-	u, err := s.repo.FindByUsername(username)
+	u, err := s.repo.FindByEmail(username)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// 2) 校验密码
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
-		return nil, fmt.Errorf("invalid credentials")
+		return nil, nil, fmt.Errorf("invalid credentials")
 	}
 	// 3. 载入这个用户的角色列表
-	roles, err := s.repo.ListRoles(u.ID)
-	if err != nil {
-		return nil, err
-	}
-	u.Roles = roles
+	//roles, err := s.repo.ListRoles(u.ID)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//u.Roles = roles
 	// 4. 载入所有这些角色对应的权限
-	for _, r := range roles {
+	for _, r := range u.Roles {
 		rps, err := s.repo.ListRolePermissions(ctx, r.ID)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for _, p := range rps {
 			u.Permissions = append(u.Permissions, p)
 		}
 	}
 
-	return u, nil
+	// 5) 载入用户的直接权限
+	direct, err := s.repo.ListUserDirectPermissions(ctx, u.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	u.Permissions = append(u.Permissions, direct...)
+
+	// 6) 去重
+	seen := make(map[uint]struct{}, len(u.Permissions))
+	dedup := make([]rbac.Permission, 0, len(u.Permissions))
+	for _, p := range u.Permissions {
+		if _, exists := seen[p.ID]; !exists {
+			seen[p.ID] = struct{}{}
+			dedup = append(dedup, p)
+		}
+	}
+	u.Permissions = dedup
+	// 6) 查门店＋区域＋公司
+	storeDetails, err := s.repo.GetStoreFullDetails(ctx, u.StoreID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not load store details: %w", err)
+	}
+
+	return u, storeDetails, nil
 }
 
 func (s *userService) Create(ctx context.Context, username, email, password string, roleNames []string) (*rbac.User, error) {

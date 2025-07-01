@@ -20,7 +20,7 @@ type RegisterRequest struct {
 // @Param username body string true "用户名"
 // @Param password body string true "密码"
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
