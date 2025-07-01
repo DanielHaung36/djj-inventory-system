@@ -3,9 +3,9 @@ package database
 import (
 	"database/sql"
 	"djj-inventory-system/internal/logger"
-	"djj-inventory-system/internal/model"
 	"djj-inventory-system/internal/model/audit"
 	"djj-inventory-system/internal/model/catalog"
+	"djj-inventory-system/internal/model/company"
 	"djj-inventory-system/internal/model/rbac"
 	"djj-inventory-system/internal/model/sales"
 	"fmt"
@@ -55,10 +55,114 @@ func InitGormDB(db *sql.DB) *gorm.DB {
 	logger.Infof("成功使用 GORM 连接到数据库")
 	return gormDB
 }
+func ensureEnums(db *gorm.DB) {
+	scripts := []string{
+		// 产品状态枚举
+		`DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_status_enum') THEN
+            CREATE TYPE product_status_enum AS ENUM (
+              'draft','pending_tech','pending_purchase','pending_finance',
+              'ready_published','published','rejected','closed'
+            );
+          END IF;
+        END$$;`,
+
+		// 审批流程状态枚举
+		`DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'application_status_enum') THEN
+            CREATE TYPE application_status_enum AS ENUM ('open','closed');
+          END IF;
+        END$$;`,
+
+		// 货物性质枚举
+		`DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'goods_nature_enum') THEN
+            CREATE TYPE goods_nature_enum AS ENUM (
+              'contract','multi_contract','partial_contract','warranty',
+              'gift','self_purchased','consignment'
+            );
+          END IF;
+        END$$;`,
+
+		// 客户类型枚举
+		`DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'customer_type_enum') THEN
+            CREATE TYPE customer_type_enum AS ENUM ('retail','wholesale','online');
+          END IF;
+        END$$;`,
+
+		// 订单类型枚举
+		`DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_type_enum') THEN
+            CREATE TYPE order_type_enum AS ENUM ('purchase','sales');
+          END IF;
+        END$$;`,
+
+		// 产品主分类枚举
+		`DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_type_enum') THEN
+            CREATE TYPE product_type_enum AS ENUM ('machine','parts','attachment','tools','others');
+          END IF;
+        END$$;`,
+	}
+
+	for _, sql := range scripts {
+		if err := db.Exec(sql).Error; err != nil {
+			log.Fatalf("failed to ensure enum exists: %v", err)
+		}
+	}
+}
 
 func Migrate(db *gorm.DB) {
+
+	// 在 AutoMigrate 之前
+	// 先执行枚举保证
+	ensureEnums(db)
+
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
 		// v1: 初始的 RBAC 表
+
+		{
+			ID: "20250701_add_companies",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&company.Company{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("companies")
+			},
+		},
+		{
+			ID: "20250701_add_catalog",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&catalog.Store{},
+					&catalog.Region{},
+					&catalog.Warehouse{},
+					&catalog.RegionWarehouse{}, // ← 加上这一行
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"region_warehouses", "regions", "warehouses", "stores",
+				)
+			},
+		},
+		{
+			ID: "20250627_add_customers",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(&catalog.Customer{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable("customers")
+			},
+		},
+
 		{
 			ID: "20250611_init_rbac",
 			Migrate: func(tx *gorm.DB) error {
@@ -120,7 +224,7 @@ func Migrate(db *gorm.DB) {
 			ID: "20250625_add_picking_lists",
 			Migrate: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(
-					&sales.PickingList{}, &model.PickingListItem{},
+					&sales.PickingList{}, &sales.PickingListItem{},
 				)
 			},
 			Rollback: func(tx *gorm.DB) error {
@@ -129,15 +233,7 @@ func Migrate(db *gorm.DB) {
 				)
 			},
 		},
-		{
-			ID: "20250627_add_customers",
-			Migrate: func(tx *gorm.DB) error {
-				return tx.AutoMigrate(&catalog.Customer{})
-			},
-			Rollback: func(tx *gorm.DB) error {
-				return tx.Migrator().DropTable("customers")
-			},
-		},
+
 		//{
 		//	ID: "20250611_add_deleted_at_to_users",
 		//	Migrate: func(tx *gorm.DB) error {

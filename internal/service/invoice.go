@@ -210,23 +210,23 @@ func (s *InvoiceService) renderAndPrintPDF(ctx context.Context, inv sales.Invoic
 }
 
 // toInvoiceItems 把 repo QuoteItem 转到 Invoice Item
-func toInvoiceItems(qis []model.QuoteItem) []model.Item {
-	out := make([]model.Item, len(qis))
-	for i, qi := range qis {
-		out[i] = sales.Item{
-			DJJCode:           qi.Product.DJJCode,
-			Description:       qi.Description,
-			DetailDescription: qi.DetailDescription,
-			VinEngine:         qi.Product.VinEngine,
-			Quantity:          qi.Quantity,
-			// Quote 不用 Location，所以留空
-			UnitPrice: qi.UnitPrice,
-			Discount:  qi.Discount,
-			Subtotal:  qi.TotalPrice,
-		}
-	}
-	return out
-}
+//func toInvoiceItems(qis []model.QuoteItem) []model.Item {
+//	out := make([]model.Item, len(qis))
+//	for i, qi := range qis {
+//		out[i] = sales.Item{
+//			DJJCode:           qi.Product.DJJCode,
+//			Description:       qi.Description,
+//			DetailDescription: qi.DetailDescription,
+//			VinEngine:         qi.Product.VinEngine,
+//			Quantity:          qi.Quantity,
+//			// Quote 不用 Location，所以留空
+//			UnitPrice: qi.UnitPrice,
+//			Discount:  qi.Discount,
+//			Subtotal:  qi.TotalPrice,
+//		}
+//	}
+//	return out
+//}
 
 // toInvoiceItemsFromOrder 用来把 []OrderItem 转成 []Item，
 // 并且把主单传过来的 location 塞进去

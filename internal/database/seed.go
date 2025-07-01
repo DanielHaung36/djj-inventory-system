@@ -2,12 +2,11 @@ package database
 
 import (
 	"djj-inventory-system/internal/model/catalog"
+	"djj-inventory-system/internal/model/rbac"
 	"djj-inventory-system/internal/model/sales"
 	"fmt"
 	"math/rand"
 	"time"
-
-	"djj-inventory-system/internal/model"
 
 	"gorm.io/gorm"
 )
@@ -60,13 +59,13 @@ func SeedTestData(db *gorm.DB) error {
 	var quotes []sales.Quote
 	for i := 1; i <= 5; i++ {
 		q := sales.Quote{
-			StoreID:     1,
-			CustomerID:  customers[rand.Intn(len(customers))].ID,
-			QuoteNumber: fmt.Sprintf("QTE-%04d", i),
-			SalesRep:    "Mark WANG",
-			QuoteDate:   time.Now(),
-			Currency:    "AUD",
-			Status:      "pending",
+			StoreID:      1,
+			CustomerID:   customers[rand.Intn(len(customers))].ID,
+			QuoteNumber:  fmt.Sprintf("QTE-%04d", i),
+			SalesRepUser: rbac.User{Username: "Mark Wang"},
+			QuoteDate:    time.Now(),
+			Currency:     "AUD",
+			Status:       "pending",
 		}
 		if err := db.Create(&q).Error; err != nil {
 			return err
@@ -114,8 +113,8 @@ func SeedTestData(db *gorm.DB) error {
 		src := quotes[rand.Intn(len(quotes))]
 		o := sales.Order{
 			QuoteID:         &src.ID,
-			StoreID:         &src.StoreID,
-			CustomerID:      &src.CustomerID,
+			StoreID:         src.StoreID,
+			CustomerID:      src.CustomerID,
 			OrderNumber:     fmt.Sprintf("ORD-%04d", i),
 			OrderDate:       time.Now(),
 			Currency:        "AUD",
@@ -162,7 +161,7 @@ func SeedTestData(db *gorm.DB) error {
 			return err
 		}
 		for _, oi := range ois {
-			pli := model.PickingListItem{
+			pli := sales.PickingListItem{
 				PickingListID: pl.ID,
 				ProductID:     oi.ProductID,
 				Quantity:      oi.Quantity,

@@ -2,15 +2,17 @@
 package repository
 
 import (
+	"context"
 	"djj-inventory-system/internal/model/audit"
 	"djj-inventory-system/internal/model/rbac"
+	"strings"
 
 	"gorm.io/gorm"
 )
 
 type UserRepo interface {
 	Create(*rbac.User) error
-	FindByID(uint) (*rbac.User, error)
+	FindByID(ctx context.Context, id uint) (*rbac.User, error)
 	FindAll() ([]rbac.User, error)
 	Update(*rbac.User) error
 	Delete(uint) error
@@ -19,8 +21,11 @@ type UserRepo interface {
 	AddRole(userID, roleID uint) error
 	RemoveRole(userID, roleID uint) error
 	ListRoles(userID uint) ([]rbac.Role, error)
-	ListRolePermissions(userID uint) ([]rbac.Permission, error)
+
+	// 查询角色对应的权限（role_permissions）
+	ListRolePermissions(ctx context.Context, userID uint) ([]rbac.Permission, error)
 	// 新增这一行
+	CreateWithRoles(ctx context.Context, u *rbac.User, roleNames []string) error
 	FindByUsername(username string) (*rbac.User, error)
 
 	// 直接给用户批量增删权限
@@ -29,7 +34,8 @@ type UserRepo interface {
 
 	// 查询用户：角色继承+直接权限扁平去重后的全部权限
 	FindWithAllPerms(userID uint) (*rbac.User, error)
-
+	// 按角色名批量查 Role
+	FindRolesByNames(ctx context.Context, names []string) ([]rbac.Role, error)
 	// 获取该用户权限最后一次变更的审计记录
 	LastPermissionChange(userID uint) (*audit.AuditedHistory, error)
 }
@@ -44,9 +50,9 @@ func (r *userRepo) Create(u *rbac.User) error {
 	return r.db.Create(u).Error
 }
 
-func (r *userRepo) FindByID(id uint) (*rbac.User, error) {
+func (r *userRepo) FindByID(ctx context.Context, id uint) (*rbac.User, error) {
 	var u rbac.User
-	if err := r.db.Preload("Roles").First(&u, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Roles").First(&u, id).Error; err != nil {
 		return nil, err
 	}
 	return &u, nil
@@ -86,6 +92,42 @@ func (r *userRepo) AddRole(userID, roleID uint) error {
 	}
 
 	return nil
+}
+
+// 在 userRepo 实现里添加：
+func (r *userRepo) FindRolesByNames(ctx context.Context, names []string) ([]rbac.Role, error) {
+	var roles []rbac.Role
+	if err := r.db.WithContext(ctx).
+		Where("name IN ?", names).
+		Find(&roles).Error; err != nil {
+		return nil, err
+	}
+	return roles, nil
+}
+
+// CreateWithRoles 在事务中创建用户，并只关联 _rep/_staff 角色
+func (r *userRepo) CreateWithRoles(ctx context.Context, u *rbac.User, roleNames []string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 查所有候选角色
+		roles, err := r.FindRolesByNames(ctx, roleNames)
+		if err != nil {
+			return err
+		}
+		// 过滤只留 _rep 或 _staff
+		filtered := roles[:0]
+		for _, role := range roles {
+			n := strings.ToLower(role.Name)
+			if strings.HasSuffix(n, "_rep") || strings.HasSuffix(n, "_staff") {
+				filtered = append(filtered, role)
+			}
+		}
+		// 关联并创建
+		u.Roles = filtered
+		if err := tx.Create(u).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (r *userRepo) RemoveRole(userID, roleID uint) error {
@@ -138,20 +180,16 @@ func (r *userRepo) FindByUsername(username string) (*rbac.User, error) {
 		WHERE role_permissions.role_id = ?;
 */
 
-func (r *userRepo) ListRolePermissions(userID uint) ([]rbac.Permission, error) {
+// ListRolePermissions 查询用户角色对应的所有权限
+func (r *userRepo) ListRolePermissions(ctx context.Context, userID uint) ([]rbac.Permission, error) {
 	var perms []rbac.Permission
-	// 假设 user_roles、role_permissions、permissions 三表关联：
-	// user_roles(user_id, role_id)
-	// role_permissions(role_id, permission_id)
-	// permissions(id,...)
-	err := r.db.
+	err := r.db.WithContext(ctx).
 		Table("permissions").
 		Select("permissions.*").
 		Joins("JOIN role_permissions rp ON rp.permission_id = permissions.id").
 		Joins("JOIN user_roles ur ON ur.role_id = rp.role_id").
 		Where("ur.user_id = ?", userID).
-		Find(&perms).
-		Error
+		Find(&perms).Error
 	return perms, err
 }
 

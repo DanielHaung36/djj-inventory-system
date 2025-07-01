@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var jwtSecret = []byte("DJJ_JWT_SECRET")
+
 type AuthHandler struct {
 	userSvc service.UserService
 }
@@ -41,11 +43,31 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
-	u, err := h.userSvc.Create(c, in.Username, in.Email, in.Password, in.RoleIDs)
+	u, err := h.userSvc.Create(c, in.Username, in.Email, in.Password, in.RoleNames)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
+
+	// 4. 发 JWT
+	//token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	//	"sub":         u.ID,
+	//	"role":        u.Roles[0].Name,
+	//	"permissions": []string{}, // 默认无额外权限
+	//	"exp":         time.Now().Add(24 * time.Hour).Unix(),
+	//})
+	//s, _ := token.SignedString(jwtSecret)
+
+	//c.JSON(http.StatusOK, gin.H{
+	//	"token": s,
+	//	"user": gin.H{
+	//		"id":         usr.ID,
+	//		"name":       usr.FullName,
+	//		"email":      usr.Email,
+	//		"role":       role.Name,
+	//		"avatar_url": usr.AvatarURL,
+	//	},
+	//})
 	// 简单起见，注册后直接打登录 cookie
 	c.SetCookie("uid", fmt.Sprint(u.ID), int((7 * 24 * time.Hour).Seconds()), "/", "", false, true)
 	c.JSON(http.StatusCreated, u)

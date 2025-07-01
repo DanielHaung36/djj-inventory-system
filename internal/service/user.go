@@ -17,7 +17,7 @@ import (
 )
 
 type UserService interface {
-	Create(ctx context.Context, username, email, password string, roleIDs []uint) (*rbac.User, error)
+	Create(ctx context.Context, username, email, password string, roleNames []string) (*rbac.User, error)
 	Get(ctx context.Context, id uint) (*rbac.User, error)
 	List(ctx context.Context) ([]rbac.User, error)
 	Update(ctx context.Context, id uint, email, password *string) (*rbac.User, error)
@@ -74,7 +74,7 @@ func (s *userService) Authenticate(ctx context.Context, username, password strin
 	u.Roles = roles
 	// 4. 载入所有这些角色对应的权限
 	for _, r := range roles {
-		rps, err := s.repo.ListRolePermissions(r.ID)
+		rps, err := s.repo.ListRolePermissions(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -86,35 +86,45 @@ func (s *userService) Authenticate(ctx context.Context, username, password strin
 	return u, nil
 }
 
-func (s *userService) Create(ctx context.Context, username, email, password string, roleIDs []uint) (*rbac.User, error) {
+func (s *userService) Create(ctx context.Context, username, email, password string, roleNames []string) (*rbac.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
+
 	u := &rbac.User{
 		Username:     username,
 		Email:        email,
 		PasswordHash: string(hash),
 		Version:      1,
 	}
-	if err := s.repo.Create(u); err != nil {
+
+	// 用新加的 CreateWithRoles 一步完成创建 + 关联
+	if err := s.repo.CreateWithRoles(ctx, u, roleNames); err != nil {
 		return nil, err
 	}
-	// 分配角色
-	for _, rid := range roleIDs {
-		if err := s.repo.AddRole(u.ID, rid); err != nil {
+
+	// 4. 根据刚关联的角色，批量拉取它们的权限并赋予给用户
+	//    （这里用 repo.ListRolePermissions）
+	rolePerms, err := s.repo.ListRolePermissions(ctx, u.ID)
+	if err != nil {
+		return nil, err
+	}
+	if len(rolePerms) > 0 {
+		permIDs := make([]uint, len(rolePerms))
+		for i, p := range rolePerms {
+			permIDs[i] = p.ID
+		}
+		if err := s.repo.GrantUserPermissions(u.ID, permIDs); err != nil {
 			return nil, err
 		}
 	}
-	//分配权限
-
-	// 审计
-	s.aud.Record(ctx, audit2.AuditedTableUsers, u.ID, "create", *u)
-	return u, nil
+	s.aud.Record(ctx, "users", u.ID, "create", *u)
+	return s.repo.FindByID(ctx, u.ID)
 }
 
 func (s *userService) Get(ctx context.Context, id uint) (*rbac.User, error) {
-	return s.repo.FindByID(id)
+	return s.repo.FindByID(ctx, id)
 }
 
 func (s *userService) List(ctx context.Context) ([]rbac.User, error) {
@@ -122,7 +132,7 @@ func (s *userService) List(ctx context.Context) ([]rbac.User, error) {
 }
 
 func (s *userService) Update(ctx context.Context, id uint, email, password *string) (*rbac.User, error) {
-	u, err := s.repo.FindByID(id)
+	u, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +158,7 @@ func (s *userService) Update(ctx context.Context, id uint, email, password *stri
 }
 
 func (s *userService) Delete(ctx context.Context, id uint) error {
-	u, err := s.repo.FindByID(id)
+	u, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -226,7 +236,7 @@ func (s *userService) GetUserPermissionData(ctx context.Context, userID uint) (*
 	var by string
 	if ah, err := s.repo.LastPermissionChange(userID); err == nil && ah != nil {
 		last = ah.ChangedAt
-		if modUser, err := s.repo.FindByID(uint(ah.ChangedBy)); err == nil && modUser != nil {
+		if modUser, err := s.repo.FindByID(ctx, uint(ah.ChangedBy)); err == nil && modUser != nil {
 			by = modUser.Username
 		}
 	}

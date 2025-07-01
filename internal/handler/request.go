@@ -2,16 +2,16 @@ package handler
 
 // RegisterRequest 用户注册请求体
 // swagger:model
-// @Description 使用用户名、邮箱、密码和可选角色 ID 列表创建新用户
-// @Param username body string true "用户名"
-// @Param email body string true "邮箱"
-// @Param password body string true "密码"
-// @Param role_ids body []uint false "角色 ID 列表"
+// @Description 使用用户名、邮箱、密码和可选角色名称列表创建新用户（仅限 sales_rep, purchase_rep, operations_staff, finance_staff）
+// @Param username    body  string    true   "用户名"
+// @Param email       body  string    true   "邮箱"
+// @Param password    body  string    true   "密码"
+// @Param role_names  body  []string  false  "角色名称列表，仅限 sales_rep, purchase_rep, operations_staff, finance_staff"
 type RegisterRequest struct {
-	Username string `json:"username" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-	RoleIDs  []uint `json:"role_ids"`
+	Username  string   `json:"username" binding:"required"`
+	Email     string   `json:"email" binding:"required,email"`
+	Password  string   `json:"password" binding:"required"`
+	RoleNames []string `json:"role_names,omitempty"`
 }
 
 // LoginRequest 用户登录请求体

@@ -46,16 +46,16 @@ func NewUserHandler(rg *gin.RouterGroup, svc service.UserService) {
 // @Router       /users [post]
 func (h *UserHandler) Create(c *gin.Context) {
 	var in struct {
-		Username string `json:"username" binding:"required"`
-		Email    string `json:"email" binding:"required,email"`
-		Password string `json:"password" binding:"required"`
-		RoleIDs  []uint `json:"role_ids"`
+		Username  string   `json:"username" binding:"required"`
+		Email     string   `json:"email" binding:"required,email"`
+		Password  string   `json:"password" binding:"required"`
+		RoleNames []string `json:"role_names" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	u, err := h.svc.Create(c, in.Username, in.Email, in.Password, in.RoleIDs)
+	u, err := h.svc.Create(c, in.Username, in.Email, in.Password, in.RoleNames)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
