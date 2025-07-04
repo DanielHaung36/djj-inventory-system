@@ -2,20 +2,25 @@ package database
 
 import (
 	"database/sql"
+	"djj-inventory-system/config"
 	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/model/audit"
 	"djj-inventory-system/internal/model/catalog"
 	"djj-inventory-system/internal/model/company"
+	"djj-inventory-system/internal/model/inventory"
 	"djj-inventory-system/internal/model/rbac"
 	"djj-inventory-system/internal/model/sales"
 	"fmt"
 	"log"
+	"os"
+	"time"
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	_ "github.com/lib/pq" // <------------ here
 	"github.com/xuri/excelize/v2"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	logv1 "gorm.io/gorm/logger"
 )
 
 func Connect() *gorm.DB {
@@ -31,6 +36,7 @@ func Connect() *gorm.DB {
 }
 func InitDB(dbName string) *sql.DB {
 	// 连接到目标数据库
+	config.Load()
 	connStrTarget := fmt.Sprintf("host=localhost user=djj password=qq123456 dbname=%s sslmode=disable", dbName)
 	dbTarget, err := sql.Open("postgres", connStrTarget)
 	if err != nil {
@@ -45,9 +51,21 @@ func InitDB(dbName string) *sql.DB {
 }
 
 func InitGormDB(db *sql.DB) *gorm.DB {
+	// 自定义一个 logger，打印出 INFO 级别以上的所有 SQL，并显示执行时间
+	newLogger := logv1.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io.Writer，这里打印到 stdout
+		logv1.Config{
+			SlowThreshold:             200 * time.Millisecond, // 慢查询阈值
+			LogLevel:                  logv1.Info,             // 这里设为 Info 或者 Debug
+			IgnoreRecordNotFoundError: true,                   // 忽略 ErrRecordNotFound
+			Colorful:                  false,                  // 关闭彩色输出
+		},
+	)
 	gormDB, err := gorm.Open(postgres.New(postgres.Config{
 		Conn: db,
-	}), &gorm.Config{})
+	}), &gorm.Config{
+		Logger: newLogger,
+	})
 	if err != nil {
 		logger.Fatalf("使用 GORM 连接数据库失败: ", err)
 
@@ -281,6 +299,65 @@ func Migrate(db *gorm.DB) {
 				)
 			},
 		},
+		{
+			ID: "20250704_add_attatchment,stock",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&catalog.Attachment{}, &catalog.ProductStock{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"attachments", "product_stocks",
+				)
+			},
+		},
+		{
+			ID: "20250704_add_images",
+			Migrate: func(tx *gorm.DB) error {
+				return tx.AutoMigrate(
+					&catalog.ProductImage{},
+				)
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Migrator().DropTable(
+					"product_images",
+				)
+			},
+		},
+		{
+			ID: "20250705_add_transaction_type_and_inventory_transaction",
+			Migrate: func(tx *gorm.DB) error {
+				// 1. 创建 PostgreSQL enum 类型
+				if err := tx.Exec(`
+            DO $$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+                CREATE TYPE transaction_type AS ENUM ('IN', 'OUT', 'SALE');
+              END IF;
+            END$$;
+        `).Error; err != nil {
+					return err
+				}
+
+				// 2. 先保证 product_stocks 表已存在（如果还没加 on_hand/reserved/generated 列也可以一并写在这里）
+				if err := tx.AutoMigrate(&catalog.ProductStock{}); err != nil {
+					return err
+				}
+
+				// 3. 创建 inventory_transaction 表
+				return tx.AutoMigrate(&inventory.InventoryTransaction{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				// 先删表
+				if err := tx.Migrator().DropTable("inventory_transaction"); err != nil {
+					return err
+				}
+				// 如果你之前也想同时撤销 product_stocks，那这儿也可以 DropTable
+				// 然后删 enum 类型
+				return tx.Exec(`DROP TYPE IF EXISTS transaction_type;`).Error
+			},
+		},
 		// 在你 migrate.go 的 migrations 列表里，追加一段：
 		//{
 		//	ID: "20250611_add_deleted_at_to_users",
@@ -322,7 +399,7 @@ func Migrate(db *gorm.DB) {
 	if err := m.Migrate(); err != nil {
 		log.Fatalf("could not migrate: %v", err)
 	}
-	//初始化RBAC
+	////初始化RBAC
 	if err := initRoles(db); err != nil {
 		logger.Fatalf("❌ initRoles: %v", err)
 	}

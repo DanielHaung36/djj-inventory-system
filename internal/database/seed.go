@@ -31,9 +31,9 @@ func (s *Seeder) Run() error {
 
 	// 0. Seed Companies
 	companies := []company.Company{
-		{Code: "DJJ_PERTH", Name: "DJJ PERTH PTY LTD", Email: "sales@djjequipment.com.au", Phone: "1800 355 388", Website: "https://djjequipment.com.au", ABN: "95 663 874 664", Address: "56 Clavering Road Bayswater, WA Australia 6053", IsDefault: true},
-		{Code: "DJJ_BRISBANE", Name: "DJJ BRISBANE PTY LTD", Email: "sales.brisbane@djjequipment.com.au", Phone: "1800 355 389", Website: "https://brisbane.djjequipment.com.au", ABN: "12 345 678 901", Address: "123 Queen Street, Brisbane, QLD 4000", IsDefault: false},
-		{Code: "DJJ_SYDNEY", Name: "DJJ SYDNEY PTY LTD", Email: "sales.sydney@djjequipment.com.au", Phone: "1800 355 390", Website: "https://sydney.djjequipment.com.au", ABN: "98 765 432 109", Address: "456 George Street, Sydney, NSW 2000", IsDefault: false},
+		{Code: "DJJ_PERTH", Name: "DJJ PERTH PTY LTD", Email: "sales@djjequipment.com.au", Phone: "1800 355 388", Website: "https://djjequipment.com.au", ABN: "95 663 874 664", Address: "56 Clavering Road Bayswater, WA Australia 6053", IsDefault: true, BSB: "956638"},
+		{Code: "DJJ_BRISBANE", Name: "DJJ BRISBANE PTY LTD", Email: "sales.brisbane@djjequipment.com.au", Phone: "1800 355 389", Website: "https://brisbane.djjequipment.com.au", ABN: "12 345 678 901", Address: "123 Queen Street, Brisbane, QLD 4000", IsDefault: false, BSB: "123678"},
+		{Code: "DJJ_SYDNEY", Name: "DJJ SYDNEY PTY LTD", Email: "sales.sydney@djjequipment.com.au", Phone: "1800 355 390", Website: "https://sydney.djjequipment.com.au", ABN: "98 765 432 109", Address: "456 George Street, Sydney, NSW 2000", IsDefault: false, BSB: "987654"},
 	}
 	var seededCompanies []company.Company
 	for i := range companies {
@@ -98,25 +98,27 @@ func (s *Seeder) Run() error {
 
 	// 2. Seed Stores
 	var stores []catalog.Store
+	// 1) 先只创建好所有的 Store，不带 manager_id
 	for _, r := range regions {
 		code := strings.ToUpper(r.Name[:3]) + "_STORE"
-		newStore := catalog.Store{
+		st := catalog.Store{
 			Code:      code,
 			Name:      r.Name + " Store",
 			RegionID:  r.ID,
 			CompanyID: r.CompanyID,
+			// **不要** 写 ManagerID
 		}
-
-		// 直接使用 newStore 接收数据库结果（确保 ID 被填充）
+		// Omit 掉 manager_id，保证第一次插入时不会带 manager_id=0
 		if err := s.db.
-			Where("code = ? AND company_id = ?", newStore.Code, newStore.CompanyID).
-			FirstOrCreate(&newStore).Error; err != nil { // 注意：传入 &newStore
-			return fmt.Errorf("seed store %s: %w", newStore.Code, err)
+			Omit("manager_id").
+			Where("code = ? AND company_id = ?", st.Code, st.CompanyID).
+			FirstOrCreate(&st).Error; err != nil {
+			return fmt.Errorf("seed store %s: %w", st.Code, err)
 		}
-		stores = append(stores, newStore) // 此时 newStore 已包含 ID
+		stores = append(stores, st)
 	}
 
-	// 2.5 在 Seed Stores 之后，给每个 Store 做一个 sales_leader
+	// 2) 再给每个 Store 创建一个 sales_leader 用户
 	for _, st := range stores {
 		username := "sales_leader_" + strings.ToLower(st.Code)
 		hash, _ := bcrypt.GenerateFromPassword([]byte("qq123456"), bcrypt.DefaultCost)
@@ -126,19 +128,20 @@ func (s *Seeder) Run() error {
 			PasswordHash: string(hash),
 			StoreID:      st.ID,
 		}
-		// 创建或获取用户
-		if err := s.db.Where("username = ?", usr.Username).FirstOrCreate(&usr).Error; err != nil {
+		if err := s.db.
+			Where("username = ?", usr.Username).
+			FirstOrCreate(&usr).
+			Error; err != nil {
 			return fmt.Errorf("seed user %s: %w", usr.Username, err)
 		}
 
-		// 绑定 sales_leader 角色
-		var role rbac.Role
-		if err := s.db.Where("name = ?", "sales_leader").First(&role).Error; err != nil {
-			return fmt.Errorf("find role sales_leader: %w", err)
-		}
-		userRole := rbac.UserRole{UserID: usr.ID, RoleID: role.ID}
-		if err := s.db.FirstOrCreate(&userRole, userRole).Error; err != nil {
-			return fmt.Errorf("assign role sales_leader to %s: %w", usr.Username, err)
+		// 3) 拿到 usr.ID 之后，单独更新这条 store 的 manager_id
+		if err := s.db.
+			Model(&catalog.Store{}).
+			Where("id = ?", st.ID).
+			Update("manager_id", usr.ID).
+			Error; err != nil {
+			return fmt.Errorf("assign manager to store %d: %w", st.ID, err)
 		}
 	}
 
@@ -149,6 +152,30 @@ func (s *Seeder) Run() error {
 			customer := catalog.Customer{
 				StoreID: st.ID,
 				Type:    "retail",
+				Company: "Wyndham Youth Aboriginal\nCorporation",
+				Name:    fmt.Sprintf("Customer %d", n),
+				Phone:   fmt.Sprintf("0400%05d", n),
+				Contact: fmt.Sprintf("%s Wyndham Youth Aboriginal", st.Name),
+				Email:   fmt.Sprintf("cust%d@%s.com", n, strings.ToLower(st.Code)),
+				Address: fmt.Sprintf("%d Test Street, %s", n, st.Name),
+				ABN:     fmt.Sprintf("1100%05d", n),
+				Version: 1,
+			}
+			if err := s.db.
+				Where("store_id = ? AND name = ?", customer.StoreID, customer.Name).
+				FirstOrCreate(&customer, customer).Error; err != nil {
+				return fmt.Errorf("seed customer %s: %w", customer.Name, err)
+			}
+		}
+	}
+	for idx, st := range stores {
+		for j := 1; j <= 2; j++ {
+			n := idx*2 + j
+			customer := catalog.Customer{
+				StoreID: st.ID,
+				Type:    "retail",
+				Contact: fmt.Sprintf("%s Wyndham Youth Aboriginal", st.Name),
+				Company: "Dnaile Youth Aboriginal\nCorporation",
 				Name:    fmt.Sprintf("Customer %d", n),
 				Phone:   fmt.Sprintf("0400%05d", n),
 				Email:   fmt.Sprintf("cust%d@%s.com", n, strings.ToLower(st.Code)),
@@ -169,26 +196,7 @@ func (s *Seeder) Run() error {
 			customer := catalog.Customer{
 				StoreID: st.ID,
 				Type:    "retail",
-				Name:    fmt.Sprintf("Customer %d", n),
-				Phone:   fmt.Sprintf("0400%05d", n),
-				Email:   fmt.Sprintf("cust%d@%s.com", n, strings.ToLower(st.Code)),
-				Address: fmt.Sprintf("%d Test Street, %s", n, st.Name),
-				ABN:     fmt.Sprintf("1100%05d", n),
-				Version: 1,
-			}
-			if err := s.db.
-				Where("store_id = ? AND name = ?", customer.StoreID, customer.Name).
-				FirstOrCreate(&customer, customer).Error; err != nil {
-				return fmt.Errorf("seed customer %s: %w", customer.Name, err)
-			}
-		}
-	}
-	for idx, st := range stores {
-		for j := 1; j <= 2; j++ {
-			n := idx*2 + j
-			customer := catalog.Customer{
-				StoreID: st.ID,
-				Type:    "retail",
+
 				Name:    fmt.Sprintf("Customer %d", n),
 				Phone:   fmt.Sprintf("0400%05d", n),
 				Email:   fmt.Sprintf("cust%d@%s.com", n, strings.ToLower(st.Code)),
@@ -216,7 +224,7 @@ func (s *Seeder) Run() error {
 	// 4. Seed Products
 	var products []catalog.Product
 	for i := 1; i <= 20; i++ {
-		p := catalog.Product{DJJCode: fmt.Sprintf("P%05d", i), NameCN: fmt.Sprintf("产品%d", i), NameEN: fmt.Sprintf("Product %d", i), Manufacturer: fmt.Sprintf("厂商%d", rand.Intn(10)), ManufacturerCode: fmt.Sprintf("MFC%03d", rand.Intn(100)), Supplier: fmt.Sprintf("供应商%d", rand.Intn(10)), Model: fmt.Sprintf("MDL%03d", rand.Intn(100)), Price: rand.Float64() * 10000, RRPPrice: rand.Float64() * 12000, Currency: "AUD", Status: "draft", ApplicationStatus: "open", ProductType: "others", Version: 1}
+		p := catalog.Product{DJJCode: fmt.Sprintf("P%05d", i), NameCN: fmt.Sprintf("产品%d", i), NameEN: fmt.Sprintf("Product %d", i), Manufacturer: fmt.Sprintf("厂商%d", rand.Intn(10)), ManufacturerCode: fmt.Sprintf("MFC%03d", rand.Intn(100)), Supplier: fmt.Sprintf("供应商%d", rand.Intn(10)), Model: fmt.Sprintf("MDL%03d", rand.Intn(100)), Price: rand.Float64() * 10000, RRPPrice: rand.Float64() * 12000, Currency: "AUD", Category: catalog.CategoryMachine, Status: "draft", ApplicationStatus: "open", ProductType: "others", Version: 1}
 		if err := s.db.Where("djj_code = ?", p.DJJCode).FirstOrCreate(&p).Error; err != nil {
 			return fmt.Errorf("seed product %s: %w", p.DJJCode, err)
 		}

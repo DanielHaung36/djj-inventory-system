@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"djj-inventory-system/internal/model/rbac"
 	"djj-inventory-system/internal/pkg/auth"
 	"djj-inventory-system/internal/service"
 	"fmt"
@@ -25,6 +26,7 @@ func NewAuthHandler(rg *gin.RouterGroup, us service.UserService) {
 	grp.POST("/register", h.Register)
 	grp.POST("/login", h.Login)
 	grp.POST("/logout", h.Logout)
+	grp.GET("/me", h.GetProfile)
 }
 
 // Register godoc
@@ -98,29 +100,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "用户名或密码错误"})
 		return
 	}
-	var rolePerms []string
-	for i := 0; i < len(u.Permissions); i++ {
-		rolePerms = append(rolePerms, u.Permissions[i].Name)
-	}
-	// extract role names
-	permSet := make(map[string]struct{}, len(rolePerms)+len(u.DirectPermissions))
-	for _, name := range rolePerms {
-		permSet[name] = struct{}{}
-	}
-	for _, p := range u.DirectPermissions {
-		permSet[p.Name] = struct{}{}
-	}
-	finalPerms := make([]string, 0, len(permSet))
-	for name := range permSet {
-		finalPerms = append(finalPerms, name)
-	}
-	role := strings.Join(func() []string {
-		names := make([]string, len(u.Roles))
-		for i, r := range u.Roles {
-			names[i] = r.Name
-		}
-		return names
-	}(), ",")
+
+	finalPerms := buildFinalPerms(u)
+	role := joinRoleNames(u.Roles)
 
 	// 5. 生成 JWT，包含 sub/role/permissions
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -145,20 +127,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		24*3600,        // maxAge: 24h
 		"/",            // path
 		"",             // domain: 改成你的域名，或留空字符串让浏览器自动匹配当前域
-		true,           // secure: 生产环境请设为 true (HTTPS)
+		false,          // secure: 生产环境请设为 true (HTTPS)
 		true,           // httpOnly: JS 无法读取
 	)
 	// 6. 返回给前端
-	c.JSON(http.StatusOK, gin.H{
-		"token": tokenString,
-		"user": gin.H{
-			"id":           u.ID,
-			"name":         u.Username,
-			"email":        u.Email,
-			"role":         role,
-			"permissions":  finalPerms,
-			"storedetails": sd,
-		}})
+	payload := gin.H{
+		"id":           u.ID,
+		"name":         u.Username,
+		"email":        u.Email,
+		"role":         role,
+		"permissions":  finalPerms,
+		"storedetails": sd,
+		"profile":      u,
+	}
+	writeAuthResponse(c, tokenString, payload)
 
 }
 
@@ -175,4 +157,86 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	auth.ClearSession(c.Writer)
 
 	c.JSON(http.StatusOK, ResponseMessage{Message: "logged out"})
+}
+
+func (h *AuthHandler) GetProfile(c *gin.Context) {
+	// 1. 从 Cookie 里读 access_token
+	tokenString, err := c.Cookie("access_token")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录或 Cookie 丢失"})
+		return
+	}
+
+	// 2. 解析并校验 JWT
+	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无效的 token"})
+		return
+	}
+
+	// 3. 提取 sub (用户 ID)
+	claims, _ := token.Claims.(jwt.MapClaims)
+	subFloat, ok := claims["sub"].(float64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "token sub 字段格式错误"})
+		return
+	}
+	userID := uint(subFloat)
+	u, sd, err := h.userSvc.GetProfile(c, userID)
+
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	}
+
+	c.SetCookie(
+		"access_token", // name
+		tokenString,    // value
+		24*3600,        // maxAge: 24h
+		"/",            // path
+		"",             // domain: 改成你的域名，或留空字符串让浏览器自动匹配当前域
+		false,          // secure: 生产环境请设为 true (HTTPS)
+		true,           // httpOnly: JS 无法读取
+	)
+	// 6. 返回给前端
+	payload := gin.H{
+		"id":           u.ID,
+		"name":         u.Username,
+		"email":        u.Email,
+		"role":         joinRoleNames(u.Roles),
+		"permissions":  buildFinalPerms(u),
+		"storedetails": sd,
+		"profile":      u,
+	}
+	writeAuthResponse(c, tokenString, payload)
+}
+
+func joinRoleNames(roles []rbac.Role) string {
+	join := strings.Join(func() []string {
+		names := make([]string, len(roles))
+		for i, r := range roles {
+			names[i] = r.Name
+		}
+		return names
+	}(), ",")
+	return join
+}
+
+func buildFinalPerms(user *rbac.User) []string {
+	set := make(map[string]struct{}, len(user.Permissions)+len(user.DirectPermissions))
+	for _, p := range user.Permissions {
+		set[p.Name] = struct{}{}
+	}
+	for _, p := range user.DirectPermissions {
+		set[p.Name] = struct{}{}
+	}
+	out := make([]string, 0, len(set))
+	for name := range set {
+		out = append(out, name)
+	}
+	return out
 }

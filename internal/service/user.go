@@ -27,7 +27,7 @@ type UserService interface {
 	AssignRole(ctx context.Context, userID, roleID uint) error
 	RemoveRole(ctx context.Context, userID, roleID uint) error
 	ListRoles(ctx context.Context, userID uint) ([]rbac.Role, error)
-
+	GetProfile(ctx context.Context, id uint) (*rbac.User, *catalog.StoreDetails, error)
 	// 用户直接权限管理
 	GrantUserPermissions(ctx context.Context, userID uint, permIDs []uint) error
 	RevokeUserPermissions(ctx context.Context, userID uint, permIDs []uint) error
@@ -73,6 +73,48 @@ func (s *userService) Authenticate(ctx context.Context, username, password strin
 	//	return nil, err
 	//}
 	//u.Roles = roles
+	// 4. 载入所有这些角色对应的权限
+	for _, r := range u.Roles {
+		rps, err := s.repo.ListRolePermissions(ctx, r.ID)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, p := range rps {
+			u.Permissions = append(u.Permissions, p)
+		}
+	}
+
+	// 5) 载入用户的直接权限
+	direct, err := s.repo.ListUserDirectPermissions(ctx, u.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	u.Permissions = append(u.Permissions, direct...)
+
+	// 6) 去重
+	seen := make(map[uint]struct{}, len(u.Permissions))
+	dedup := make([]rbac.Permission, 0, len(u.Permissions))
+	for _, p := range u.Permissions {
+		if _, exists := seen[p.ID]; !exists {
+			seen[p.ID] = struct{}{}
+			dedup = append(dedup, p)
+		}
+	}
+	u.Permissions = dedup
+	// 6) 查门店＋区域＋公司
+	storeDetails, err := s.repo.GetStoreFullDetails(ctx, u.StoreID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not load store details: %w", err)
+	}
+
+	return u, storeDetails, nil
+}
+
+func (s *userService) GetProfile(ctx context.Context, id uint) (*rbac.User, *catalog.StoreDetails, error) {
+	u, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not FindByID details: %w", err)
+	}
 	// 4. 载入所有这些角色对应的权限
 	for _, r := range u.Roles {
 		rps, err := s.repo.ListRolePermissions(ctx, r.ID)

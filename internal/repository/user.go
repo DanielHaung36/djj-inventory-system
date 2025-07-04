@@ -58,7 +58,11 @@ func (r *userRepo) Create(u *rbac.User) error {
 
 func (r *userRepo) FindByID(ctx context.Context, id uint) (*rbac.User, error) {
 	var u rbac.User
-	if err := r.db.WithContext(ctx).Preload("Roles").First(&u, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Where("id = ? AND is_deleted = false", id).
+		Preload("Roles").
+		Preload("DirectPermissions").
+		First(&u).Error; err != nil {
 		return nil, err
 	}
 	return &u, nil
@@ -332,8 +336,14 @@ func (r *userRepo) GetStoreFullDetails(ctx context.Context, storeID uint) (*cata
 	)
 
 	// 1) 先拿门店
-	if err := r.db.WithContext(ctx).First(&st, storeID).Error; err != nil {
-		return nil, fmt.Errorf("GetStoreFullDetails: load store %d: %w", storeID, err)
+	if err := r.db.
+		WithContext(ctx).
+		Preload("Region.Company"). // if your Region struct also has a Company rel
+		Preload("Company").
+		Preload("Manager").
+		First(&st, storeID).
+		Error; err != nil {
+		return nil, fmt.Errorf("load store %d: %w", storeID, err)
 	}
 
 	// 2) 根据 RegionID 加载 Region

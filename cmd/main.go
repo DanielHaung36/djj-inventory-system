@@ -1,9 +1,11 @@
 package main
 
 import (
+	"djj-inventory-system/config"
 	"djj-inventory-system/internal/database"
 	"djj-inventory-system/internal/logger"
 	"djj-inventory-system/internal/pkg/setup"
+	"fmt"
 
 	"go.uber.org/zap/zapcore"
 )
@@ -15,6 +17,7 @@ import (
 // @BasePath        /api
 func main() {
 	// initialize logging
+	config.Load()
 	if err := logger.Init("./logs/app.log", zapcore.DebugLevel); err != nil {
 		panic(err)
 	}
@@ -22,8 +25,8 @@ func main() {
 	// connect to DB
 	db := database.Connect()
 	router := setup.NewRouter(db)
-
-	if err := router.Run("0.0.0.0:8080"); err != nil {
+	addr := fmt.Sprintf("%s:%s", config.Get("SERVER_IP"), config.Get("SERVER_PORT"))
+	if err := router.Run(addr); err != nil {
 		panic(err)
 	}
 }

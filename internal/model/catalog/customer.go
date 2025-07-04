@@ -9,6 +9,7 @@ type Customer struct {
 	StoreID   uint      `gorm:"column:store_id"      json:"store_id"`
 	Store     Store     `gorm:"foreignKey:StoreID" json:"store"`
 	Type      string    `gorm:"type:customer_type_enum;default:'retail';column:type" json:"type"`
+	Company   string    `gorm:"type:varchar(255);column:company" json:"company"`
 	Name      string    `gorm:"size:100;not null;column:name"   json:"name"`
 	Phone     string    `gorm:"size:20;column:phone"            json:"phone"`
 	Email     string    `gorm:"size:100;column:email"           json:"email"`

@@ -7,10 +7,13 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20250625204652-ce640014f9ac
 	github.com/chromedp/chromedp v0.13.7
 	github.com/gavv/httpexpect/v2 v2.17.0
+	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-gormigrate/gormigrate/v2 v2.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/gorilla/securecookie v1.1.2
+	github.com/gorilla/websocket v1.4.2
+	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.10.0
 	github.com/swaggo/files v1.0.1
@@ -57,7 +60,6 @@ require (
 	github.com/gobwas/ws v1.4.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

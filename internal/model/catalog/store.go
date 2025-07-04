@@ -18,8 +18,8 @@ type Store struct {
 	CompanyID uint            `gorm:"not null" json:"companyId"`                     // 所属公司ID
 	Company   company.Company `gorm:"foreignKey:CompanyID" json:"company,omitempty"` // 关联公司
 	Address   string          `gorm:"size:255" json:"address"`                       // 地址
-	ManagerID *uint           `json:"managerId,omitempty"`                           // 负责人ID
-	Manager   *rbac.User      `gorm:"foreignKey:ManagerID" json:"manager,omitempty"` // 负责人
+	ManagerID uint            `json:"managerId,omitempty"`                           // 负责人ID
+	Manager   rbac.User       `gorm:"foreignKey:ManagerID" json:"manager,omitempty"` // 负责人
 	Version   int64           `gorm:"not null;default:1" json:"version"`             // 乐观锁
 	CreatedAt time.Time       `json:"createdAt"`                                     // 创建时间
 	UpdatedAt time.Time       `json:"updatedAt"`                                     // 更新时间
