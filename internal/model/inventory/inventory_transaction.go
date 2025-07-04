@@ -7,14 +7,6 @@ import (
 
 const TableNameInventoryTransaction = "inventory_transaction"
 
-type TransactionType string
-
-const (
-	TransactionTypeIn   TransactionType = "IN"
-	TransactionTypeOut  TransactionType = "OUT"
-	TransactionTypeSale TransactionType = "SALE"
-)
-
 // InventoryTransaction 库存流水
 type InventoryTransaction struct {
 	ID          uint                 `gorm:"primaryKey" json:"id"`
